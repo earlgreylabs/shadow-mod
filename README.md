@@ -62,10 +62,6 @@ src/
         └── cron.ts           — report delivery job
 ```
 
-## Submission
-
-See [`submission/`](submission/) for the hackathon presentation materials.
-
 ---
 
 Built by [@earlgreylabs](https://github.com/earlgreylabs) · u/EarlGrey__ on Reddit
