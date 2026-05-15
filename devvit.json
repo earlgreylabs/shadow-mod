@@ -27,13 +27,21 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/settings"
+      },
+      {
+        "label": "My ShadowMod stats",
+        "description": "View your shadow decision accuracy over time",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/stats"
       }
     ]
   },
   "forms": {
     "shadowDecisionForm": "/internal/form/shadow-decision-submit",
     "seniorReviewForm": "/internal/form/senior-review-submit",
-    "settingsForm": "/internal/form/settings-submit"
+    "settingsForm": "/internal/form/settings-submit",
+    "statsForm": "/internal/form/stats-submit"
   },
   "scheduler": {
     "tasks": {

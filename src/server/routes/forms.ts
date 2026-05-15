@@ -82,6 +82,11 @@ forms.post('/senior-review-submit', async (c) => {
   });
 });
 
+forms.post('/stats-submit', async (c) => {
+  // Read-only form — no action on submit
+  return c.json<UiResponse>({});
+});
+
 forms.post('/settings-submit', async (c) => {
   const body = await c.req.json<{ values: { seniorMods: string } }>();
   const raw = body.values.seniorMods ?? '';
