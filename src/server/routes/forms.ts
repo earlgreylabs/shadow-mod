@@ -13,14 +13,15 @@ import { setConfig } from '../core/config.js';
 export const forms = new Hono();
 
 forms.post('/shadow-decision-submit', async (c) => {
-  const body = await c.req.json<{ values: { action: string; reason: string } }>();
+  // SelectField value comes back as string[] even for single-select
+  const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
   const { postId, userId, username } = context;
 
   if (!postId || !userId || !username) {
     return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
   }
 
-  const action = body.values.action as ModActionType;
+  const action = body.values.action[0] as ModActionType;
   const reason = body.values.reason?.trim();
 
   if (!action || !reason) {
@@ -44,14 +45,14 @@ forms.post('/shadow-decision-submit', async (c) => {
 });
 
 forms.post('/senior-review-submit', async (c) => {
-  const body = await c.req.json<{ values: { action: string; reason: string } }>();
+  const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
   const { postId, userId, username } = context;
 
   if (!postId || !userId || !username) {
     return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
   }
 
-  const action = body.values.action as ModActionType;
+  const action = body.values.action[0] as ModActionType;
   const reason = body.values.reason?.trim();
 
   if (!action || !reason) {

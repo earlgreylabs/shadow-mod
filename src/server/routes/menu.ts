@@ -2,8 +2,7 @@ import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
 import { hasShadowDecision, getPendingForPost } from '../core/decisions.js';
-import { isSeniorMod } from '../core/config.js';
-import { getConfig } from '../core/config.js';
+import { isSeniorMod, getConfig } from '../core/config.js';
 import { MOD_ACTION_LABELS } from '../../shared/types.js';
 
 export const menu = new Hono();
@@ -74,7 +73,8 @@ menu.post('/senior-review', async (c) => {
     });
   }
 
-  const pending = await getPendingForPost(postId);
+  const allPending = await getPendingForPost(postId);
+  const pending = allPending.filter(d => d.status === 'pending_senior');
   if (pending.length === 0) {
     return c.json<UiResponse>({
       showToast: 'No pending shadow decisions for this post.',
