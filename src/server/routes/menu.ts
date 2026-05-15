@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
-import { hasShadowDecision, getPendingForPost } from '../core/decisions.js';
+import { hasShadowDecision, getPendingForPost, getStats } from '../core/decisions.js';
 import { isSeniorMod, getConfig } from '../core/config.js';
 import { MOD_ACTION_LABELS } from '../../shared/types.js';
 
@@ -106,6 +106,45 @@ menu.post('/senior-review', async (c) => {
           },
         ],
         acceptLabel: 'Submit review',
+      },
+    },
+  });
+});
+
+menu.post('/stats', async (c) => {
+  const { userId, username } = context;
+
+  if (!userId || !username) {
+    return c.json<UiResponse>({ showToast: 'Could not identify user.' });
+  }
+
+  const raw = await getStats(userId);
+  const total   = Number.parseInt(raw['total']   ?? '0', 10);
+  const correct = Number.parseInt(raw['correct'] ?? '0', 10);
+  const wrong   = Number.parseInt(raw['wrong']   ?? '0', 10);
+
+  if (total === 0) {
+    return c.json<UiResponse>({
+      showToast: 'No completed shadow decisions yet. Use "Record shadow decision" on a post to start.',
+    });
+  }
+
+  const accuracy = `${((correct / total) * 100).toFixed(1)}%`;
+
+  return c.json<UiResponse>({
+    showForm: {
+      name: 'statsForm',
+      form: {
+        title: `ShadowMod — u/${username}`,
+        description: 'Your shadow decision accuracy across all completed reviews.',
+        fields: [
+          { name: 'total',    label: 'Total completed',    type: 'string', defaultValue: String(total),   disabled: true, required: false },
+          { name: 'correct',  label: 'Matched senior mod', type: 'string', defaultValue: String(correct), disabled: true, required: false },
+          { name: 'wrong',    label: 'Diverged',           type: 'string', defaultValue: String(wrong),   disabled: true, required: false },
+          { name: 'accuracy', label: 'Accuracy',           type: 'string', defaultValue: accuracy,         disabled: true, required: false },
+        ],
+        acceptLabel: 'Done',
+        cancelLabel: 'Close',
       },
     },
   });
