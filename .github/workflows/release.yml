@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, upload & release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Devvit CLI
+        run: pnpm add -g devvit
+
+      - name: Upload to Reddit Developer Platform
+        env:
+          DEVVIT_TOKEN: ${{ secrets.DEVVIT_TOKEN }}
+        run: devvit upload --token "$DEVVIT_TOKEN"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | sed -n '2p')
+          CURR_TAG=${GITHUB_REF_NAME}
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="$CURR_TAG"
+            LOG=$(git log --pretty="- %s (%h)" "$CURR_TAG")
+          else
+            RANGE="$PREV_TAG..$CURR_TAG"
+            LOG=$(git log --pretty="- %s (%h)" "$PREV_TAG..$CURR_TAG")
+          fi
+          echo "log<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            ## What's changed
+
+            ${{ steps.changelog.outputs.log }}
+
+            ---
+            Uploaded to the Reddit Developer Platform as `shadow-mod` ${{ github.ref_name }}.
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
