@@ -1,0 +1,53 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "shadow-mod",
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Record shadow decision",
+        "description": "Log your moderation call without executing it",
+        "location": "post",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/shadow-decision"
+      },
+      {
+        "label": "Review shadow decision",
+        "description": "Review a pending trainee mod decision",
+        "location": "post",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/senior-review"
+      },
+      {
+        "label": "ShadowMod settings",
+        "description": "Configure senior mods and trainee assignments",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/settings"
+      }
+    ]
+  },
+  "forms": {
+    "shadowDecisionForm": "/internal/form/shadow-decision-submit",
+    "seniorReviewForm": "/internal/form/senior-review-submit",
+    "settingsForm": "/internal/form/settings-submit"
+  },
+  "scheduler": {
+    "tasks": {
+      "generate-report": {
+        "endpoint": "/internal/cron/generate-report"
+      }
+    }
+  },
+  "triggers": {
+    "onModAction": "/internal/triggers/mod-action",
+    "onAppInstall": "/internal/triggers/app-install"
+  },
+  "permissions": {
+    "redis": true,
+    "reddit": true
+  }
+}
