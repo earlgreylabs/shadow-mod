@@ -4,7 +4,8 @@ import type { ShadowDecision, SeniorDecision, DecisionStatus } from '../../share
 // Key patterns — all namespaced per-installation by Devvit automatically
 const shadowKey  = (postId: string, modId: string) => `decision:${postId}:${modId}`;
 const seniorKey  = (postId: string, modId: string) => `senior:${postId}:${modId}`;
-const pendingKey = () => 'pending'; // sorted set: member="{postId}:{modId}", score=timestamp
+const pendingKey = () => 'pending'; // sorted set: member="{postId}:{shadowModId}", score=timestamp
+const seniorsKey = () => 'seniors'; // sorted set: member="{postId}:{seniorModId}", score=timestamp
 
 // --- Shadow decisions ---
 
@@ -34,16 +35,18 @@ export async function updateShadowStatus(
   await redis.set(shadowKey(postId, shadowModId), JSON.stringify({ ...existing, status }));
 }
 
-// Returns all pending shadow decisions for a post (multiple trainees possible)
+// Returns all shadow decisions for a post still in the pending set (any status).
+// Callers filter by status as needed.
 export async function getPendingForPost(postId: string): Promise<ShadowDecision[]> {
-  // Scan the sorted set for members matching postId prefix
   const { members } = await redis.zScan(pendingKey(), 0, `${postId}:*`, 100);
   const decisions: ShadowDecision[] = [];
   for (const { member } of members) {
-    const [, modId] = member.split(':');
+    // member format: "{postId}:{shadowModId}" — shadowModId is a t2_ thing ID (no internal colons)
+    const colonIdx = member.indexOf(':');
+    const modId = colonIdx >= 0 ? member.slice(colonIdx + 1) : undefined;
     if (!modId) continue;
     const d = await getShadowDecision(postId, modId);
-    if (d && d.status === 'pending_senior') decisions.push(d);
+    if (d) decisions.push(d);
   }
   return decisions;
 }
@@ -56,6 +59,10 @@ export async function hasShadowDecision(postId: string, shadowModId: string): Pr
 
 export async function saveSeniorDecision(d: SeniorDecision): Promise<void> {
   await redis.set(seniorKey(d.postId, d.seniorModId), JSON.stringify(d));
+  await redis.zAdd(seniorsKey(), {
+    member: `${d.postId}:${d.seniorModId}`,
+    score: Date.now(),
+  });
 }
 
 export async function getSeniorDecision(
@@ -66,12 +73,14 @@ export async function getSeniorDecision(
   return raw ? (JSON.parse(raw) as SeniorDecision) : null;
 }
 
-// Returns all senior decisions for a post
+// Returns all senior decisions for a post, using the seniors sorted set.
 export async function getSeniorDecisionsForPost(postId: string): Promise<SeniorDecision[]> {
-  const { members } = await redis.zScan(pendingKey(), 0, `${postId}:*`, 100);
+  const { members } = await redis.zScan(seniorsKey(), 0, `${postId}:*`, 100);
   const decisions: SeniorDecision[] = [];
   for (const { member } of members) {
-    const [, modId] = member.split(':');
+    // member format: "{postId}:{seniorModId}"
+    const colonIdx = member.indexOf(':');
+    const modId = colonIdx >= 0 ? member.slice(colonIdx + 1) : undefined;
     if (!modId) continue;
     const d = await getSeniorDecision(postId, modId);
     if (d) decisions.push(d);
