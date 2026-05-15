@@ -49,5 +49,8 @@
   "permissions": {
     "redis": true,
     "reddit": true
+  },
+  "dev": {
+    "subreddit": "shadow_mod_dev"
   }
 }
