@@ -3,10 +3,10 @@ import { context } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
 import type { ModActionType } from '../../shared/types.js';
 import {
-  saveShadowDecision,
-  saveSeniorDecision,
+  saveObserverDecision,
+  saveReviewerDecision,
   getPendingForPost,
-  updateShadowStatus,
+  updateObserverStatus,
 } from '../core/decisions.js';
 import { setConfig } from '../core/config.js';
 
@@ -28,19 +28,19 @@ forms.post('/shadow-decision-submit', async (c) => {
     return c.json<UiResponse>({ showToast: 'Action and reasoning are both required.' });
   }
 
-  await saveShadowDecision({
+  await saveObserverDecision({
     id: `${postId}:${userId}`,
     postId,
-    shadowModId: userId,
-    shadowModName: username,
+    observerId: userId,
+    observerName: username,
     action,
     reason,
     timestamp: new Date().toISOString(),
-    status: 'pending_senior',
+    status: 'pending_review',
   });
 
   return c.json<UiResponse>({
-    showToast: { text: 'Shadow decision recorded. A senior mod will review shortly.', appearance: 'success' },
+    showToast: { text: 'Shadow decision recorded. A reviewer will assess it shortly.', appearance: 'success' },
   });
 });
 
@@ -59,19 +59,19 @@ forms.post('/senior-review-submit', async (c) => {
     return c.json<UiResponse>({ showToast: 'Action and reasoning are both required.' });
   }
 
-  await saveSeniorDecision({
+  await saveReviewerDecision({
     postId,
-    seniorModId: userId,
-    seniorModName: username,
+    reviewerId: userId,
+    reviewerName: username,
     action,
     reason,
     timestamp: new Date().toISOString(),
   });
 
-  // Move all pending shadow decisions for this post to pending_report
+  // Move all pending observer decisions for this post to pending_report
   const pending = await getPendingForPost(postId);
   for (const d of pending) {
-    await updateShadowStatus(postId, d.shadowModId, 'pending_report');
+    await updateObserverStatus(postId, d.observerId, 'pending_report');
   }
 
   return c.json<UiResponse>({
@@ -88,19 +88,19 @@ forms.post('/stats-submit', async (c) => {
 });
 
 forms.post('/settings-submit', async (c) => {
-  const body = await c.req.json<{ values: { seniorMods: string } }>();
-  const raw = body.values.seniorMods ?? '';
+  const body = await c.req.json<{ values: { reviewers: string } }>();
+  const raw = body.values.reviewers ?? '';
 
-  const seniorMods = raw
+  const reviewers = raw
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
 
-  await setConfig({ seniorMods });
+  await setConfig({ reviewers });
 
   return c.json<UiResponse>({
     showToast: {
-      text: `Saved. Senior mods: ${seniorMods.length > 0 ? seniorMods.join(', ') : 'none set'}`,
+      text: `Saved. Reviewers: ${reviewers.length > 0 ? reviewers.join(', ') : 'none set'}`,
       appearance: 'success',
     },
   });

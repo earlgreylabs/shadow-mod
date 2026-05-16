@@ -8,7 +8,7 @@ export const cron = new Hono();
 cron.post('/generate-report', async (c) => {
   const { data } = await c.req.json<{ data: ReportJobData }>();
 
-  if (!data?.postId || !data?.shadowModId) {
+  if (!data?.postId || !data?.observerId) {
     console.error('generate-report: missing job data', data);
     return c.json({}, 200);
   }

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { OnModActionRequest, TriggerResponse } from '@devvit/web/shared';
-import { getPendingForPost, getSeniorDecisionsForPost } from '../core/decisions.js';
+import { getPendingForPost, getReviewerDecisionsForPost } from '../core/decisions.js';
 import { scheduleReport } from '../core/reports.js';
 import type { ReportJobData } from '../../shared/types.js';
 
@@ -8,7 +8,7 @@ export const triggers = new Hono();
 
 // ModAction trigger — fires on every mod action in the subreddit.
 // We use it to detect when a real action is taken on a post that has
-// a completed shadow+senior review pair, then schedule the report.
+// a completed observer+reviewer decision pair, then schedule the report.
 triggers.post('/mod-action', async (c) => {
   const body = await c.req.json<OnModActionRequest>();
 
@@ -26,9 +26,9 @@ triggers.post('/mod-action', async (c) => {
     return c.json<TriggerResponse>({});
   }
 
-  const seniors = await getSeniorDecisionsForPost(postId);
-  if (seniors.length === 0) {
-    // Real action taken but no senior review recorded — nothing to report
+  const reviewers = await getReviewerDecisionsForPost(postId);
+  if (reviewers.length === 0) {
+    // Real action taken but no reviewer decision recorded — nothing to report
     return c.json<TriggerResponse>({});
   }
 
@@ -36,13 +36,13 @@ triggers.post('/mod-action', async (c) => {
   const postPermalink = post.permalink ?? `https://reddit.com/comments/${postId}`;
   const finalAction   = body.action    ?? 'unknown';
 
-  // Schedule a report job for each shadow mod with pending_report status
-  for (const shadow of pending) {
-    if (shadow.status !== 'pending_report') continue;
+  // Schedule a report job for each observer with pending_report status
+  for (const observer of pending) {
+    if (observer.status !== 'pending_report') continue;
 
     const jobData: ReportJobData = {
       postId,
-      shadowModId: shadow.shadowModId,
+      observerId: observer.observerId,
       finalAction,
       postTitle,
       postPermalink,

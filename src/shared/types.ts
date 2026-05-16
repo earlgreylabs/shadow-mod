@@ -14,26 +14,26 @@ export const MOD_ACTION_LABELS: Record<ModActionType, string> = {
   warn:      'Warn (modmail)',
   temp_ban:  'Temporary ban',
   perm_ban:  'Permanent ban',
-  escalate:  'Escalate to senior mod',
+  escalate:  'Escalate to reviewer',
 };
 
-export type DecisionStatus = 'pending_senior' | 'pending_report' | 'complete';
+export type DecisionStatus = 'pending_review' | 'pending_report' | 'complete';
 
-export type ShadowDecision = {
-  id: string;             // postId:shadowModId
+export type ObserverDecision = {
+  id: string;           // postId:observerId
   postId: string;
-  shadowModId: string;    // t2_ prefixed
-  shadowModName: string;
+  observerId: string;   // t2_ prefixed
+  observerName: string;
   action: ModActionType;
   reason: string;
-  timestamp: string;      // ISO 8601
+  timestamp: string;    // ISO 8601
   status: DecisionStatus;
 };
 
-export type SeniorDecision = {
+export type ReviewerDecision = {
   postId: string;
-  seniorModId: string;    // t2_ prefixed
-  seniorModName: string;
+  reviewerId: string;   // t2_ prefixed
+  reviewerName: string;
   action: ModActionType;
   reason: string;
   timestamp: string;
@@ -43,21 +43,21 @@ export type Report = {
   postId: string;
   postTitle: string;
   postPermalink: string;
-  shadow: ShadowDecision;
-  senior: SeniorDecision;
-  finalAction: string;    // raw Reddit mod action type
+  observer: ObserverDecision;
+  reviewer: ReviewerDecision;
+  finalAction: string;  // raw Reddit mod action type
   agreement: boolean;
   generatedAt: string;
 };
 
 export type AppConfig = {
-  seniorMods: string[];   // Reddit usernames (no t2_ prefix)
+  reviewers: string[];  // Reddit usernames (no t2_ prefix)
 };
 
 // Payload carried through the scheduler job
 export type ReportJobData = {
   postId: string;
-  shadowModId: string;
+  observerId: string;
   finalAction: string;
   postTitle: string;
   postPermalink: string;
