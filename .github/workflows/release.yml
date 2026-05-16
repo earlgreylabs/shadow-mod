@@ -38,10 +38,15 @@ jobs:
       - name: Install Devvit CLI
         run: pnpm add -g devvit
 
-      - name: Upload to Reddit Developer Platform
+      - name: Configure Devvit credentials
         env:
           DEVVIT_TOKEN: ${{ secrets.DEVVIT_TOKEN }}
-        run: devvit upload --token "$DEVVIT_TOKEN"
+        run: |
+          mkdir -p "$HOME/.devvit"
+          echo "$DEVVIT_TOKEN" > "$HOME/.devvit/token"
+
+      - name: Upload to Reddit Developer Platform
+        run: devvit upload
 
       - name: Generate changelog
         id: changelog
