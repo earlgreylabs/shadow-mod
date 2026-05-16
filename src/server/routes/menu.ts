@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
-import { hasShadowDecision, getPendingForPost, getStats } from '../core/decisions.js';
-import { isSeniorMod, getConfig } from '../core/config.js';
+import { hasObserverDecision, getPendingForPost, getStats } from '../core/decisions.js';
+import { isReviewer, getConfig } from '../core/config.js';
 import { MOD_ACTION_LABELS } from '../../shared/types.js';
 
 export const menu = new Hono();
@@ -19,14 +19,13 @@ menu.post('/shadow-decision', async (c) => {
     return c.json<UiResponse>({ showToast: 'Could not identify post or user.' });
   }
 
-  // Senior mods should use the review action, not this one
-  if (await isSeniorMod(username)) {
+  if (await isReviewer(username)) {
     return c.json<UiResponse>({
-      showToast: 'Senior mods use "Review shadow decision" instead.',
+      showToast: 'Reviewers use "Review shadow decision" instead.',
     });
   }
 
-  if (await hasShadowDecision(postId, userId)) {
+  if (await hasObserverDecision(postId, userId)) {
     return c.json<UiResponse>({
       showToast: 'You already have a pending shadow decision for this post.',
     });
@@ -67,28 +66,28 @@ menu.post('/senior-review', async (c) => {
     return c.json<UiResponse>({ showToast: 'Could not identify post or user.' });
   }
 
-  if (!(await isSeniorMod(username))) {
+  if (!(await isReviewer(username))) {
     return c.json<UiResponse>({
-      showToast: 'Only senior mods can review shadow decisions. Ask your admin to add you in ShadowMod settings.',
+      showToast: 'Only reviewers can do this. Ask your admin to add you in ShadowMod settings.',
     });
   }
 
   const allPending = await getPendingForPost(postId);
-  const pending = allPending.filter(d => d.status === 'pending_senior');
+  const pending = allPending.filter(d => d.status === 'pending_review');
   if (pending.length === 0) {
     return c.json<UiResponse>({
       showToast: 'No pending shadow decisions for this post.',
     });
   }
 
-  const traineeNames = pending.map(d => d.shadowModName).join(', ');
+  const observerNames = pending.map(d => d.observerName).join(', ');
 
   return c.json<UiResponse>({
     showForm: {
       name: 'seniorReviewForm',
       form: {
         title: 'Review shadow decision',
-        description: `Pending from: ${traineeNames}. Record your independent decision before taking real action.`,
+        description: `Pending from: ${observerNames}. Record your independent decision before taking real action.`,
         fields: [
           {
             name: 'action',
@@ -138,10 +137,10 @@ menu.post('/stats', async (c) => {
         title: `ShadowMod — u/${username}`,
         description: 'Your shadow decision accuracy across all completed reviews.',
         fields: [
-          { name: 'total',    label: 'Total completed',    type: 'string', defaultValue: String(total),   disabled: true, required: false },
-          { name: 'correct',  label: 'Matched senior mod', type: 'string', defaultValue: String(correct), disabled: true, required: false },
-          { name: 'wrong',    label: 'Diverged',           type: 'string', defaultValue: String(wrong),   disabled: true, required: false },
-          { name: 'accuracy', label: 'Accuracy',           type: 'string', defaultValue: accuracy,         disabled: true, required: false },
+          { name: 'total',    label: 'Total completed',  type: 'string', defaultValue: String(total),   disabled: true, required: false },
+          { name: 'correct',  label: 'Matched reviewer', type: 'string', defaultValue: String(correct), disabled: true, required: false },
+          { name: 'wrong',    label: 'Diverged',         type: 'string', defaultValue: String(wrong),   disabled: true, required: false },
+          { name: 'accuracy', label: 'Accuracy',         type: 'string', defaultValue: accuracy,         disabled: true, required: false },
         ],
         acceptLabel: 'Done',
         cancelLabel: 'Close',
@@ -158,14 +157,14 @@ menu.post('/settings', async (c) => {
       name: 'settingsForm',
       form: {
         title: 'ShadowMod settings',
-        description: 'Comma-separated list of Reddit usernames who act as senior reviewers.',
+        description: 'Comma-separated list of Reddit usernames who act as reviewers for this subreddit.',
         fields: [
           {
-            name: 'seniorMods',
-            label: 'Senior mod usernames',
+            name: 'reviewers',
+            label: 'Reviewer usernames',
             type: 'string',
             placeholder: 'e.g. username1, username2',
-            defaultValue: config.seniorMods.join(', '),
+            defaultValue: config.reviewers.join(', '),
             required: false,
           },
         ],

@@ -16,14 +16,14 @@
       },
       {
         "label": "Review shadow decision",
-        "description": "Review a pending trainee mod decision",
+        "description": "Review a pending observer decision",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/senior-review"
       },
       {
         "label": "ShadowMod settings",
-        "description": "Configure senior mods and trainee assignments",
+        "description": "Configure reviewers and observers",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/settings"

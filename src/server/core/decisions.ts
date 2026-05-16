@@ -1,95 +1,95 @@
 import { redis } from '@devvit/web/server';
-import type { ShadowDecision, SeniorDecision, DecisionStatus } from '../../shared/types.js';
+import type { ObserverDecision, ReviewerDecision, DecisionStatus } from '../../shared/types.js';
 
 // Key patterns — all namespaced per-installation by Devvit automatically
-const shadowKey  = (postId: string, modId: string) => `decision:${postId}:${modId}`;
-const seniorKey  = (postId: string, modId: string) => `senior:${postId}:${modId}`;
-const pendingKey = () => 'pending'; // sorted set: member="{postId}:{shadowModId}", score=timestamp
-const seniorsKey = () => 'seniors'; // sorted set: member="{postId}:{seniorModId}", score=timestamp
+const observerKey  = (postId: string, observerId: string) => `observer:${postId}:${observerId}`;
+const reviewerKey  = (postId: string, reviewerId: string) => `reviewer:${postId}:${reviewerId}`;
+const pendingKey   = () => 'pending'; // sorted set: member="{postId}:{observerId}", score=timestamp
+const reviewersKey = () => 'reviewers_set'; // sorted set: member="{postId}:{reviewerId}", score=timestamp
 
-// --- Shadow decisions ---
+// --- Observer decisions ---
 
-export async function saveShadowDecision(d: ShadowDecision): Promise<void> {
-  await redis.set(shadowKey(d.postId, d.shadowModId), JSON.stringify(d));
+export async function saveObserverDecision(d: ObserverDecision): Promise<void> {
+  await redis.set(observerKey(d.postId, d.observerId), JSON.stringify(d));
   await redis.zAdd(pendingKey(), {
-    member: `${d.postId}:${d.shadowModId}`,
+    member: `${d.postId}:${d.observerId}`,
     score: Date.now(),
   });
 }
 
-export async function getShadowDecision(
+export async function getObserverDecision(
   postId: string,
-  shadowModId: string,
-): Promise<ShadowDecision | null> {
-  const raw = await redis.get(shadowKey(postId, shadowModId));
-  return raw ? (JSON.parse(raw) as ShadowDecision) : null;
+  observerId: string,
+): Promise<ObserverDecision | null> {
+  const raw = await redis.get(observerKey(postId, observerId));
+  return raw ? (JSON.parse(raw) as ObserverDecision) : null;
 }
 
-export async function updateShadowStatus(
+export async function updateObserverStatus(
   postId: string,
-  shadowModId: string,
+  observerId: string,
   status: DecisionStatus,
 ): Promise<void> {
-  const existing = await getShadowDecision(postId, shadowModId);
+  const existing = await getObserverDecision(postId, observerId);
   if (!existing) return;
-  await redis.set(shadowKey(postId, shadowModId), JSON.stringify({ ...existing, status }));
+  await redis.set(observerKey(postId, observerId), JSON.stringify({ ...existing, status }));
 }
 
-// Returns all shadow decisions for a post still in the pending set (any status).
+// Returns all observer decisions for a post still in the pending set (any status).
 // Callers filter by status as needed.
-export async function getPendingForPost(postId: string): Promise<ShadowDecision[]> {
+export async function getPendingForPost(postId: string): Promise<ObserverDecision[]> {
   const { members } = await redis.zScan(pendingKey(), 0, `${postId}:*`, 100);
-  const decisions: ShadowDecision[] = [];
+  const decisions: ObserverDecision[] = [];
   for (const { member } of members) {
-    // member format: "{postId}:{shadowModId}" — shadowModId is a t2_ thing ID (no internal colons)
+    // member format: "{postId}:{observerId}" — observerId is a t2_ thing ID (no internal colons)
     const colonIdx = member.indexOf(':');
-    const modId = colonIdx >= 0 ? member.slice(colonIdx + 1) : undefined;
-    if (!modId) continue;
-    const d = await getShadowDecision(postId, modId);
+    const observerId = colonIdx >= 0 ? member.slice(colonIdx + 1) : undefined;
+    if (!observerId) continue;
+    const d = await getObserverDecision(postId, observerId);
     if (d) decisions.push(d);
   }
   return decisions;
 }
 
-export async function hasShadowDecision(postId: string, shadowModId: string): Promise<boolean> {
-  return (await redis.get(shadowKey(postId, shadowModId))) !== undefined;
+export async function hasObserverDecision(postId: string, observerId: string): Promise<boolean> {
+  return (await redis.get(observerKey(postId, observerId))) !== undefined;
 }
 
-// --- Senior decisions ---
+export async function removePending(postId: string, observerId: string): Promise<void> {
+  await redis.zRem(pendingKey(), [`${postId}:${observerId}`]);
+}
 
-export async function saveSeniorDecision(d: SeniorDecision): Promise<void> {
-  await redis.set(seniorKey(d.postId, d.seniorModId), JSON.stringify(d));
-  await redis.zAdd(seniorsKey(), {
-    member: `${d.postId}:${d.seniorModId}`,
+// --- Reviewer decisions ---
+
+export async function saveReviewerDecision(d: ReviewerDecision): Promise<void> {
+  await redis.set(reviewerKey(d.postId, d.reviewerId), JSON.stringify(d));
+  await redis.zAdd(reviewersKey(), {
+    member: `${d.postId}:${d.reviewerId}`,
     score: Date.now(),
   });
 }
 
-export async function getSeniorDecision(
+export async function getReviewerDecision(
   postId: string,
-  seniorModId: string,
-): Promise<SeniorDecision | null> {
-  const raw = await redis.get(seniorKey(postId, seniorModId));
-  return raw ? (JSON.parse(raw) as SeniorDecision) : null;
+  reviewerId: string,
+): Promise<ReviewerDecision | null> {
+  const raw = await redis.get(reviewerKey(postId, reviewerId));
+  return raw ? (JSON.parse(raw) as ReviewerDecision) : null;
 }
 
-// Returns all senior decisions for a post, using the seniors sorted set.
-export async function getSeniorDecisionsForPost(postId: string): Promise<SeniorDecision[]> {
-  const { members } = await redis.zScan(seniorsKey(), 0, `${postId}:*`, 100);
-  const decisions: SeniorDecision[] = [];
+// Returns all reviewer decisions for a post, using the reviewers sorted set.
+export async function getReviewerDecisionsForPost(postId: string): Promise<ReviewerDecision[]> {
+  const { members } = await redis.zScan(reviewersKey(), 0, `${postId}:*`, 100);
+  const decisions: ReviewerDecision[] = [];
   for (const { member } of members) {
-    // member format: "{postId}:{seniorModId}"
+    // member format: "{postId}:{reviewerId}"
     const colonIdx = member.indexOf(':');
-    const modId = colonIdx >= 0 ? member.slice(colonIdx + 1) : undefined;
-    if (!modId) continue;
-    const d = await getSeniorDecision(postId, modId);
+    const reviewerId = colonIdx >= 0 ? member.slice(colonIdx + 1) : undefined;
+    if (!reviewerId) continue;
+    const d = await getReviewerDecision(postId, reviewerId);
     if (d) decisions.push(d);
   }
   return decisions;
-}
-
-export async function removePending(postId: string, shadowModId: string): Promise<void> {
-  await redis.zRem(pendingKey(), [`${postId}:${shadowModId}`]);
 }
 
 // --- Stats ---
