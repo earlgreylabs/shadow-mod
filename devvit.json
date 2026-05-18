@@ -8,29 +8,29 @@
   "menu": {
     "items": [
       {
-        "label": "Record shadow decision",
+        "label": "Record observation",
         "description": "Log your moderation call without executing it",
         "location": "post",
         "forUserType": "moderator",
-        "endpoint": "/internal/menu/shadow-decision"
+        "endpoint": "/internal/menu/observation"
       },
       {
-        "label": "Review shadow decision",
-        "description": "Review a pending observer decision",
+        "label": "Record review",
+        "description": "Record your independent review of a pending observation",
         "location": "post",
         "forUserType": "moderator",
-        "endpoint": "/internal/menu/senior-review"
+        "endpoint": "/internal/menu/review"
       },
       {
         "label": "ShadowMod settings",
-        "description": "Configure reviewers and observers",
+        "description": "Configure Reviewers and Observers",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/settings"
       },
       {
         "label": "My ShadowMod stats",
-        "description": "View your shadow decision accuracy over time",
+        "description": "View your observation accuracy over time",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/stats"
@@ -38,8 +38,8 @@
     ]
   },
   "forms": {
-    "shadowDecisionForm": "/internal/form/shadow-decision-submit",
-    "seniorReviewForm": "/internal/form/senior-review-submit",
+    "observationForm": "/internal/form/observation-submit",
+    "reviewForm": "/internal/form/review-submit",
     "settingsForm": "/internal/form/settings-submit",
     "statsForm": "/internal/form/stats-submit"
   },
