@@ -32,9 +32,9 @@ triggers.post('/mod-action', async (c) => {
     return c.json<TriggerResponse>({});
   }
 
-  const postTitle     = post.title     ?? `Post ${postId}`;
+  const postTitle = post.title ?? `Post ${postId}`;
   const postPermalink = post.permalink ?? `https://reddit.com/comments/${postId}`;
-  const finalAction   = body.action    ?? 'unknown';
+  const finalAction = body.action ?? 'unknown';
 
   // Schedule a report job for each observer with pending_report status
   for (const observer of pending) {

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
-import { deliverReport } from '../core/reports.js';
+import { generateReport } from '../core/reports.js';
 import type { ReportJobData } from '../../shared/types.js';
 
 export const cron = new Hono();
@@ -13,7 +13,7 @@ cron.post('/generate-report', async (c) => {
     return c.json({}, 200);
   }
 
-  await deliverReport(data, context.subredditName);
+  await generateReport(data, context.subredditName);
 
   return c.json({}, 200);
 });

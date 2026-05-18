@@ -12,7 +12,7 @@ import { setConfig } from '../core/config.js';
 
 export const forms = new Hono();
 
-forms.post('/shadow-decision-submit', async (c) => {
+forms.post('/observation-submit', async (c) => {
   // SelectField value comes back as string[] even for single-select
   const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
   const { postId, userId, username } = context;
@@ -40,11 +40,14 @@ forms.post('/shadow-decision-submit', async (c) => {
   });
 
   return c.json<UiResponse>({
-    showToast: { text: 'Shadow decision recorded. A reviewer will assess it shortly.', appearance: 'success' },
+    showToast: {
+      text: 'Observation recorded. A Reviewer will assess it shortly.',
+      appearance: 'success',
+    },
   });
 });
 
-forms.post('/senior-review-submit', async (c) => {
+forms.post('/review-submit', async (c) => {
   const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
   const { postId, userId, username } = context;
 
@@ -93,7 +96,7 @@ forms.post('/settings-submit', async (c) => {
 
   const reviewers = raw
     .split(',')
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 
   await setConfig({ reviewers });

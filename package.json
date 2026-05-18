@@ -1,14 +1,22 @@
 {
   "private": true,
   "name": "shadow-mod",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "BSD-3-Clause",
   "type": "module",
   "scripts": {
     "build": "vite build",
     "dev": "devvit playtest",
     "type-check": "tsc --build",
-    "upload": "pnpm type-check && devvit upload",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\" \"*.{json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\" \"*.{json,md,yml,yaml}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check": "pnpm type-check && pnpm lint && pnpm format:check && pnpm test",
+    "upload": "pnpm check && devvit upload",
     "publish": "pnpm upload && devvit publish"
   },
   "engines": {
@@ -19,11 +27,20 @@
     "@devvit/web": "0.12.23",
     "@hono/node-server": "2.0.2",
     "devvit": "0.12.23",
-    "hono": "4.12.18"
+    "hono": "4.12.18",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "@vitest/coverage-v8": "^4.1.6",
+    "eslint": "^10.4.0",
+    "lefthook": "^2.1.6",
+    "prettier": "^3.8.3",
     "typescript": "6.0.3",
-    "vite": "8.0.12"
+    "typescript-eslint": "^8.59.3",
+    "vite": "8.0.12",
+    "vitest": "^4.1.6"
   }
 }

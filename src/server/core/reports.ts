@@ -1,7 +1,18 @@
 import { reddit, scheduler } from '@devvit/web/server';
-import type { Report, ReportJobData, ObserverDecision, ReviewerDecision } from '../../shared/types.js';
+import type {
+  Report,
+  ReportJobData,
+  ObserverDecision,
+  ReviewerDecision,
+} from '../../shared/types.js';
 import { MOD_ACTION_LABELS } from '../../shared/types.js';
-import { incrementStats, updateObserverStatus, removePending, getObserverDecision, getReviewerDecisionsForPost } from './decisions.js';
+import {
+  incrementStats,
+  updateObserverStatus,
+  removePending,
+  getObserverDecision,
+  getReviewerDecisionsForPost,
+} from './decisions.js';
 
 export function buildReport(
   observer: ObserverDecision,
@@ -23,7 +34,7 @@ export function buildReport(
 }
 
 export function formatReportMessage(report: Report): string {
-  const agreement     = report.agreement ? '✅ Match' : '❌ Diverged';
+  const agreement = report.agreement ? '✅ Match' : '❌ Diverged';
   const observerLabel = MOD_ACTION_LABELS[report.observer.action] ?? report.observer.action;
   const reviewerLabel = MOD_ACTION_LABELS[report.reviewer.action] ?? report.reviewer.action;
 
@@ -54,7 +65,7 @@ export async function scheduleReport(data: ReportJobData): Promise<void> {
   });
 }
 
-export async function deliverReport(data: ReportJobData, subredditName: string): Promise<void> {
+export async function generateReport(data: ReportJobData, subredditName: string): Promise<void> {
   const { postId, observerId, finalAction, postTitle, postPermalink } = data;
 
   const observer = await getObserverDecision(postId, observerId);
