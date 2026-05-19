@@ -7,6 +7,18 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.1] — 2026-05-19
+
+### Fixed
+
+- Form submissions no longer return "Session error — please try again." Devvit does not forward the `devvit-post` header to form submission requests. Menu handlers now store a short-lived Redis form session (`form-session:{userId}`, 5-minute TTL) before returning `showForm`. Submit handlers read `context.postId` and fall back to the session when it is absent.
+
+### Added
+
+- App profile icon (`assets/icon.png`) wired up via `marketingAssets.icon` in `devvit.json`. Appears on the app's Reddit profile and Dev Portal listing after publish approval.
+
+---
+
 ## [0.3.0] — 2026-05-18
 
 Terminology rename to Observer/Reviewer (completed across code, devvit.json, and docs), plus a full deterministic toolchain so future correctness is enforced by the toolchain rather than agent review.

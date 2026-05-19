@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
 import { generateReport } from '../core/reports.js';
-import type { ReportJobData } from '../../shared/types.js';
+import type { ReportJobData } from '@/shared/types.js';
 
 export const cron = new Hono();
 

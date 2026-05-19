@@ -1,6 +1,6 @@
 import { redis } from '@devvit/web/server';
-import type { AppConfig } from '../../shared/types.js';
-import { AppConfigSchema } from '../../shared/schemas.js';
+import type { AppConfig } from '@/shared/types.js';
+import { AppConfigSchema } from '@/shared/schemas.js';
 
 const CONFIG_KEY = 'config:reviewers';
 const EMPTY_CONFIG: AppConfig = { reviewers: [] };

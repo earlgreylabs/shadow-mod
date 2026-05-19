@@ -1,6 +1,6 @@
 import { redis } from '@devvit/web/server';
-import type { ObserverDecision, ReviewerDecision, DecisionStatus } from '../../shared/types.js';
-import { ObserverDecisionSchema, ReviewerDecisionSchema } from '../../shared/schemas.js';
+import type { ObserverDecision, ReviewerDecision, DecisionStatus } from '@/shared/types.js';
+import { ObserverDecisionSchema, ReviewerDecisionSchema } from '@/shared/schemas.js';
 
 // Key patterns — all namespaced per-installation by Devvit automatically
 const observerKey = (postId: string, observerId: string) => `observer:${postId}:${observerId}`;
@@ -121,6 +121,29 @@ export async function getReviewerDecisionsForPost(postId: string): Promise<Revie
     if (d) decisions.push(d);
   }
   return decisions;
+}
+
+// --- Form sessions ---
+// Bridges postId/username from menu handler to form submit handler, since Devvit
+// does not re-send the devvit-post header on form submission requests.
+
+type FormSession = { postId: string; userId: string; username: string };
+const formSessionKey = (userId: string) => `form-session:${userId}`;
+
+export async function storeFormSession(session: FormSession): Promise<void> {
+  const key = formSessionKey(session.userId);
+  const expiration = new Date(Date.now() + 5 * 60 * 1000); // 5-minute TTL
+  await redis.set(key, JSON.stringify(session), { expiration });
+}
+
+export async function getFormSession(userId: string): Promise<FormSession | null> {
+  const raw = await redis.get(formSessionKey(userId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as FormSession;
+  } catch {
+    return null;
+  }
 }
 
 // --- Stats ---

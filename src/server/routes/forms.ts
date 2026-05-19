@@ -1,23 +1,35 @@
 import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
-import type { ModActionType } from '../../shared/types.js';
+import type { ModActionType } from '@/shared/types.js';
 import {
   saveObserverDecision,
   saveReviewerDecision,
   getPendingForPost,
   updateObserverStatus,
+  getFormSession,
 } from '../core/decisions.js';
 import { setConfig } from '../core/config.js';
 
 export const forms = new Hono();
 
 forms.post('/observation-submit', async (c) => {
+  const ctxUserId = context.userId;
   // SelectField value comes back as string[] even for single-select
   const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
-  const { postId, userId, username } = context;
 
-  if (!postId || !userId || !username) {
+  if (!ctxUserId) {
+    return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
+  }
+
+  // Devvit does not forward the devvit-post header to form submission requests,
+  // so postId may be absent from context. Fall back to the session stored by the menu handler.
+  const session = ctxUserId ? await getFormSession(ctxUserId) : null;
+  const postId = context.postId ?? session?.postId;
+  const userId = ctxUserId;
+  const username = context.username ?? session?.username;
+
+  if (!postId || !username) {
     return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
   }
 
@@ -48,10 +60,19 @@ forms.post('/observation-submit', async (c) => {
 });
 
 forms.post('/review-submit', async (c) => {
+  const ctxUserId = context.userId;
   const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
-  const { postId, userId, username } = context;
 
-  if (!postId || !userId || !username) {
+  if (!ctxUserId) {
+    return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
+  }
+
+  const session = ctxUserId ? await getFormSession(ctxUserId) : null;
+  const postId = context.postId ?? session?.postId;
+  const userId = ctxUserId;
+  const username = context.username ?? session?.username;
+
+  if (!postId || !username) {
     return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
   }
 

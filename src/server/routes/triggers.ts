@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { OnModActionRequest, TriggerResponse } from '@devvit/web/shared';
 import { getPendingForPost, getReviewerDecisionsForPost } from '../core/decisions.js';
 import { scheduleReport } from '../core/reports.js';
-import type { ReportJobData } from '../../shared/types.js';
+import type { ReportJobData } from '@/shared/types.js';
 
 export const triggers = new Hono();
 

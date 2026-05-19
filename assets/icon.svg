@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="observer-clip">
+      <path d="M 160,512 C 160,347 640,347 640,512 C 640,677 160,677 160,512 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="100" fill="#1A1F36"/>
+
+  <!-- Observer eye: solid fill, off-white -->
+  <path d="M 160,512 C 160,347 640,347 640,512 C 640,677 160,677 160,512 Z" fill="#E8EAF0"/>
+
+  <!-- Amber overlap zone: Reviewer shape clipped to Observer area -->
+  <path d="M 384,512 C 384,347 864,347 864,512 C 864,677 384,677 384,512 Z" fill="#FF6314" clip-path="url(#observer-clip)"/>
+
+  <!-- Reviewer eye: outline only -->
+  <path d="M 384,512 C 384,347 864,347 864,512 C 864,677 384,677 384,512 Z" fill="none" stroke="#E8EAF0" stroke-width="32"/>
+</svg>

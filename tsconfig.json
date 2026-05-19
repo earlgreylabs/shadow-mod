@@ -14,7 +14,12 @@
     "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "outDir": "dist/types"
+    "ignoreDeprecations": "6.0",
+    "outDir": "dist/types",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*", "vite.config.ts", "vitest.config.ts"]
 }

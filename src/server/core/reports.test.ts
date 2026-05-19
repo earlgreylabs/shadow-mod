@@ -74,7 +74,7 @@ import {
   getObserverDecision,
   getStats,
 } from './decisions.js';
-import type { ObserverDecision, ReviewerDecision, ReportJobData } from '../../shared/types.js';
+import type { ObserverDecision, ReviewerDecision, ReportJobData } from '@/shared/types.js';
 
 const observer: ObserverDecision = {
   id: 't3_abc:t2_obs',

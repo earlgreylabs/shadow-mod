@@ -58,6 +58,9 @@
     "redis": true,
     "reddit": true
   },
+  "marketingAssets": {
+    "icon": "assets/icon.png"
+  },
   "dev": {
     "subreddit": "shadow_mod_dev"
   }

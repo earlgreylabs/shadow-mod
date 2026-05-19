@@ -1,11 +1,6 @@
 import { reddit, scheduler } from '@devvit/web/server';
-import type {
-  Report,
-  ReportJobData,
-  ObserverDecision,
-  ReviewerDecision,
-} from '../../shared/types.js';
-import { MOD_ACTION_LABELS } from '../../shared/types.js';
+import type { Report, ReportJobData, ObserverDecision, ReviewerDecision } from '@/shared/types.js';
+import { MOD_ACTION_LABELS } from '@/shared/types.js';
 import {
   incrementStats,
   updateObserverStatus,

@@ -87,7 +87,7 @@ import {
   getReviewerDecisionsForPost,
   getPendingForPost,
 } from './decisions.js';
-import type { ObserverDecision, ReviewerDecision } from '../../shared/types.js';
+import type { ObserverDecision, ReviewerDecision } from '@/shared/types.js';
 
 const baseObserver: ObserverDecision = {
   id: 't3_abc:t2_obs',

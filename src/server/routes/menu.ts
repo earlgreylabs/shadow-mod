@@ -1,9 +1,14 @@
 import { Hono } from 'hono';
 import { context } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
-import { hasObserverDecision, getPendingForPost, getStats } from '../core/decisions.js';
+import {
+  hasObserverDecision,
+  getPendingForPost,
+  getStats,
+  storeFormSession,
+} from '../core/decisions.js';
 import { isReviewer, getConfig } from '../core/config.js';
-import { MOD_ACTION_LABELS } from '../../shared/types.js';
+import { MOD_ACTION_LABELS } from '@/shared/types.js';
 
 export const menu = new Hono();
 
@@ -30,6 +35,8 @@ menu.post('/observation', async (c) => {
       showToast: 'You already have a pending observation for this post.',
     });
   }
+
+  await storeFormSession({ postId, userId, username });
 
   return c.json<UiResponse>({
     showForm: {
@@ -61,9 +68,9 @@ menu.post('/observation', async (c) => {
 });
 
 menu.post('/review', async (c) => {
-  const { postId, username } = context;
+  const { postId, userId, username } = context;
 
-  if (!postId || !username) {
+  if (!postId || !userId || !username) {
     return c.json<UiResponse>({ showToast: 'Could not identify post or user.' });
   }
 
@@ -82,6 +89,7 @@ menu.post('/review', async (c) => {
   }
 
   const observerNames = pending.map((d) => d.observerName).join(', ');
+  await storeFormSession({ postId, userId, username });
 
   return c.json<UiResponse>({
     showForm: {
