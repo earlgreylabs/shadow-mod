@@ -1,4 +1,4 @@
-# ShadowMod, Project Proposal
+# ShadowMod — Hackathon Submission
 
 **Hackathon:** Reddit Mod Tools and Migrated Apps Hackathon
 **Deadline:** 2026-05-27 @ 6:00 PM PDT
@@ -81,13 +81,13 @@ Each subreddit can define what counts as a "correct" decision for their norms. A
 
 ### Components
 
-| Component           | Devvit primitive            | Purpose                                                  |
-| ------------------- | --------------------------- | -------------------------------------------------------- |
-| Observation form    | Custom post / menu action   | Observer captures decision plus reasoning                |
-| Review form         | Custom post / menu action   | Reviewer records decision before seeing the Observation  |
-| Report post         | Custom post type            | Structured comparison delivered to both parties          |
-| Analytics dashboard | Custom post type (mod-only) | Longitudinal metrics per Observer                        |
-| Config panel        | App settings                | Subreddit-specific decision types, Reviewer assignments  |
+| Component           | Devvit primitive            | Purpose                                                 |
+| ------------------- | --------------------------- | ------------------------------------------------------- |
+| Observation form    | Custom post / menu action   | Observer captures decision plus reasoning               |
+| Review form         | Custom post / menu action   | Reviewer records decision before seeing the Observation |
+| Report post         | Custom post type            | Structured comparison delivered to both parties         |
+| Analytics dashboard | Custom post type (mod-only) | Longitudinal metrics per Observer                       |
+| Config panel        | App settings                | Subreddit-specific decision types, Reviewer assignments |
 
 ### Data model (key entities)
 
@@ -122,12 +122,12 @@ Devvit's realtime / scheduled jobs to notify Reviewers of pending Observations a
 
 ## Submission Fit
 
-| Judging criterion   | ShadowMod                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| Community Impact    | Reduces bad early-mod decisions, scales Reviewer mentorship, improves community trust      |
-| Polish & compliance | Devvit-native install, standard mod queue integration, no external dependencies            |
-| Reliable UX         | One-click install, no config required to start, Reviewer assignment via app settings       |
-| Ecosystem Impact    | Applicable to any subreddit with a tiered mod structure                                    |
+| Judging criterion   | ShadowMod                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| Community Impact    | Reduces bad early-mod decisions, scales Reviewer mentorship, improves community trust |
+| Polish & compliance | Devvit-native install, standard mod queue integration, no external dependencies       |
+| Reliable UX         | One-click install, no config required to start, Reviewer assignment via app settings  |
+| Ecosystem Impact    | Applicable to any subreddit with a tiered mod structure                               |
 
 ---
 

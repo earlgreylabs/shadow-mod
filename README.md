@@ -1,66 +1,107 @@
 # ShadowMod
 
-A Devvit app that trains new Reddit moderators through structured Observations, without ever touching live content.
-
-Built for the [Reddit Mod Tools and Migrated Apps Hackathon](https://mod-tools-migration.devpost.com/) (May 2026).
+A Devvit app that gives mod teams a structured Observer/Reviewer workflow: Observers record moderation decisions without executing them, Reviewers assess the same posts independently, and a comparison report is delivered after the real mod action lands.
 
 ---
 
-## The problem
-
-New moderators learn by doing, which means early mistakes happen on real posts in front of real community members. Reddit's current Training Queue is focused on approve/remove practice with immediate per-post feedback (a useful starting point), but there does not appear to be a built-in structured workflow for practising the full range of mod actions, capturing reasoning, or running a blind parallel Review by an experienced mod for longitudinal comparison.
-
-## How it works
-
-1. The **Observer** opens a post in the mod queue and selects "Record observation". They choose an action (approve, remove, flair, warn, ban, escalate) and write their reasoning. The action is **not executed**.
-2. The **Reviewer** sees "Record review" on the same post and records their own independent decision, **without seeing the Observer's call first** (blind review).
-3. When the real mod action is taken on the post, ShadowMod detects it via a trigger and **schedules a report**.
-4. The Observer receives a **comparison report** via modmail: their Observation vs the Reviewer's Review vs the final Outcome, with reasoning from both sides.
-5. Over time, **longitudinal stats** track Observer accuracy and reveal patterns (e.g. consistently over-removing political content).
-
-## Key design decisions
-
-- **Blind Review**: the Reviewer records their call before seeing the Observer's, eliminating anchoring bias in feedback.
-- **Full action vocabulary**: approve, remove, flair, warn, temp ban, perm ban, escalate, and any custom action the subreddit configures. Not just approve/remove.
-- **Async, not immediate**: feedback arrives after the Reviewer records their Review, mirroring real moderation flow.
-- **ModAction trigger**: we don't intercept or replace the real mod workflow. We listen passively and correlate the real action to the pending Review via post ID, action type, and timestamp. Trigger payloads may require supplementary modlog reads for reliable final-outcome detection.
-
 ## Tech stack
 
-- **Platform:** [Devvit](https://developers.reddit.com) (Reddit Developer Platform)
-- **Server:** Hono + Node (`@devvit/web`)
-- **Storage:** Devvit Redis (namespaced per subreddit)
-- **Language:** TypeScript
+| Layer | Technology |
+| --- | --- |
+| Platform | [Devvit](https://developers.reddit.com) (Reddit Developer Platform) |
+| Server | Hono + Node (`@devvit/web`) |
+| Storage | Devvit Redis (namespaced per subreddit) |
+| Language | TypeScript (strict) |
 
-## Development
+---
+
+## Development setup
 
 ```bash
 pnpm install
-pnpm run build       # compile
-pnpm run dev         # devvit playtest, live test on a subreddit
-pnpm run upload      # upload to Reddit developer marketplace
+pnpm run build       # compile + type-check
+pnpm run dev         # devvit playtest on a registered test subreddit
+pnpm run upload      # upload to Reddit developer marketplace (requires approval)
 ```
 
-Requires the [Devvit CLI](https://developers.reddit.com/docs/cli) and a Reddit account with developer access.
+Requires the [Devvit CLI](https://developers.reddit.com/docs/cli) and a Reddit account with developer access. The test subreddit is `r/shadow_mod_dev`.
+
+---
 
 ## Project structure
 
-```md
+```
 src/
 ├── shared/
-│   └── types.ts              (shared types: Observation, Review, Report)
+│   └── types.ts              # Observation, Review, Report types
 └── server/
-    ├── index.ts              (Hono app entry point)
+    ├── index.ts              # Hono app entry point
     ├── core/
-    │   ├── config.ts         (Reviewer list in Redis)
-    │   ├── decisions.ts      (Redis CRUD for Observations and Reviews)
-    │   └── reports.ts        (report generation and delivery)
+    │   ├── config.ts         # Reviewer list management (Redis)
+    │   ├── decisions.ts      # Redis CRUD for Observations and Reviews
+    │   └── reports.ts        # report generation and modmail delivery
     └── routes/
-        ├── menu.ts           (menu action handlers)
-        ├── forms.ts          (form submission handlers)
-        ├── triggers.ts       (ModAction trigger, schedules report)
-        └── cron.ts           (report delivery job)
+        ├── menu.ts           # menu action handlers
+        ├── forms.ts          # form submission handlers
+        ├── triggers.ts       # onModAction trigger: detects real action, schedules report
+        └── cron.ts           # generate-report scheduled job
 ```
+
+---
+
+## Core flow
+
+1. **Observer** selects "Record observation" on a queued post, picks an action (approve, remove, flair, warn, ban, escalate) and writes reasoning. The action is not executed.
+2. **Reviewer** selects "Record review" on the same post and records their own decision, blind to the Observer's call.
+3. When any mod or AutoModerator takes a real action on the post, the `onModAction` trigger fires and schedules the `generate-report` job.
+4. The job produces a comparison report (Observation vs Review vs Outcome, with both reasoning strings) and delivers it to the Observer via modmail. Falls back to a mod note if modmail is unavailable.
+
+---
+
+## Data model
+
+```
+Observation
+  observationId, postId, subredditId
+  observerId, action, reason, timestamp
+  status: pending_review | complete
+
+Review
+  reviewId, observationId
+  reviewerId, action, reason, timestamp
+
+Report
+  reportId, observationId
+  observerAction, observerReason
+  reviewerAction, reviewerReason
+  outcome (final mod action)
+  agreement: boolean
+  createdAt
+```
+
+Redis key scheme:
+
+| Key pattern | Contents |
+| --- | --- |
+| `observation:{postId}:{observerId}` | serialised Observation |
+| `review:{postId}:{reviewerId}` | serialised Review |
+| `pending` (sorted set) | postIds with open Observations |
+| `config:reviewers` (set) | usernames in the Reviewer role |
+| `stats:{userId}` | accumulated accuracy stats |
+
+---
+
+## Configuration
+
+Reviewer assignment is managed through the "ShadowMod settings" subreddit menu action (mod-only). Usernames are stored without the `u/` prefix.
+
+App-level config lives in `devvit.json`. Dev subreddit override: `dev.subreddit = "shadow_mod_dev"`.
+
+---
+
+## Releases
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history. Release process is documented in `CLAUDE.md` (local only).
 
 ---
 
