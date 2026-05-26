@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShadowMod — How It Works</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --orange: #ff4500;
+      --orange-dim: rgba(255, 69, 0, 0.15);
+      --green: #3fb950;
+      --blue: #58a6ff;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 24px 40px;
+      text-align: center;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: var(--orange);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .logo-name span { color: var(--orange); }
+
+    header p {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 520px;
+      margin: 0 auto 20px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      background: var(--orange-dim);
+      border: 1px solid var(--orange);
+      color: var(--orange);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Layout ──────────────────────────────────────── */
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ── Phase heading ───────────────────────────────── */
+    .phase {
+      margin-bottom: 56px;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .phase-num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .phase-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .phase-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Step card ───────────────────────────────────── */
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 0 20px;
+      margin-bottom: 40px;
+    }
+
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-body {}
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      max-width: 640px;
+    }
+
+    .step-screenshot {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    .step-screenshot img {
+      width: 100%;
+      display: block;
+    }
+
+    /* ── Connector line ──────────────────────────────── */
+    .step-connector {
+      grid-column: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* ── Callout ─────────────────────────────────────── */
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--orange);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 40px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .callout strong { color: var(--text); }
+
+    /* ── Report preview ──────────────────────────────── */
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+
+    .report-table th {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .report-table td {
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      color: var(--text);
+    }
+
+    .match { color: var(--green); font-weight: 600; }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 32px 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .step { grid-template-columns: 36px 1fr; gap: 0 12px; }
+      .step-num { width: 28px; height: 28px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">👁</div>
+    <div class="logo-name"><span>Shadow</span>Mod</div>
+  </div>
+  <p>Blind parallel moderation training — built on Devvit for Reddit's mod tools hackathon.</p>
+  <div class="badges">
+    <span class="badge">Devvit App</span>
+    <span class="badge">Mod Training</span>
+    <span class="badge">Reddit Hackathon 2026</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Phase 0: Setup ─────────────────────────── -->
+  <section class="phase">
+    <div class="phase-header">
+      <div class="phase-num">0</div>
+      <div>
+        <div class="phase-title">Setup</div>
+        <div class="phase-subtitle">A subreddit admin designates which mods are Reviewers</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Configure Reviewers in ShadowMod settings</div>
+        <div class="step-desc">
+          From the subreddit feed, open <strong>Mod Tools</strong> and choose <strong>ShadowMod settings</strong>.
+          Enter the Reddit usernames of mods who will act as Reviewers. Everyone else defaults to the Observer role.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/13-settings-configure-reviewers.png" alt="ShadowMod settings modal showing Reviewer configuration" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Phase 1: Observer ──────────────────────── -->
+  <section class="phase">
+    <div class="phase-header">
+      <div class="phase-num">1</div>
+      <div>
+        <div class="phase-title">Observer flow</div>
+        <div class="phase-subtitle">A mod-in-training records their call without touching the post</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>What is an Observer?</strong> A mod whose call is recorded but not executed. The post stays in its original state. No action is taken until a real mod action occurs.
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">A new post arrives in the subreddit</div>
+        <div class="step-desc">
+          The Observer receives a notification and opens the post as they normally would.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/02-new-post-notification.png" alt="Reddit notifications showing new post in r/shadow_mod_dev" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Open Mod Tools on the post</div>
+        <div class="step-desc">
+          The standard Reddit mod tools menu now includes two new entries: <strong>Record observation</strong> and <strong>Record review</strong>.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/03-mod-tools-menu.png" alt="Mod tools context menu showing Record observation and Record review options" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">Record an Observation</div>
+        <div class="step-desc">
+          The Observer selects an action (e.g. Approve, Remove) and writes their reasoning. This is recorded privately — the post is untouched.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/04-observer-record-form.png" alt="Record observation modal with action and reasoning fields" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">Observation confirmed</div>
+        <div class="step-desc">
+          A toast confirms the Observation is saved. ShadowMod notifies a Reviewer that this post is pending a blind review.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/05-observer-observation-confirmed.png" alt="Toast: Observation recorded. A Reviewer will assess it shortly." loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Phase 2: Reviewer ──────────────────────── -->
+  <section class="phase">
+    <div class="phase-header">
+      <div class="phase-num">2</div>
+      <div>
+        <div class="phase-title">Reviewer flow</div>
+        <div class="phase-subtitle">An experienced mod records their independent call, blind to the Observer's decision</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>What is a Reviewer?</strong> A mod designated in settings whose call provides the comparison baseline. They never see the Observer's reasoning until the Comparison report is generated.
+    </div>
+
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">Check the Review queue</div>
+        <div class="step-desc">
+          From the subreddit feed, the Reviewer opens <strong>Mod Tools</strong> and selects <strong>Review queue</strong> to see posts awaiting their blind review.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/06-mod-tools-review-queue.png" alt="Subreddit feed with Mod Tools dropdown showing Review queue" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-title">Review queue lists pending Observations</div>
+        <div class="step-desc">
+          Each entry shows the post title and which Observer submitted it. The Reviewer picks a post to review.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/07-reviewer-review-queue-modal.png" alt="Review queue modal listing Demo Post observed by empire-day" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-body">
+        <div class="step-title">Role guard keeps workflows clean</div>
+        <div class="step-desc">
+          If a Reviewer accidentally clicks <strong>Record observation</strong>, ShadowMod redirects them with a clear prompt. This keeps Observer and Reviewer records separate and uncontaminated.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/08-reviewer-role-guard-toast.png" alt="Toast: Reviewer: use Record review instead" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-body">
+        <div class="step-title">Record a Review</div>
+        <div class="step-desc">
+          The Reviewer selects their independent action and reasoning — with no visibility into what the Observer chose. Blind by design.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/09-reviewer-record-form.png" alt="Record review modal showing action and reasoning fields" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">10</div>
+      <div class="step-body">
+        <div class="step-title">Review confirmed</div>
+        <div class="step-desc">
+          The Review is saved. ShadowMod now waits for the real mod action on the post before generating the Comparison report.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/10-reviewer-review-confirmed.png" alt="Toast: Your review is recorded. Reports will be sent when the real action is taken." loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Phase 3: Report ────────────────────────── -->
+  <section class="phase">
+    <div class="phase-header">
+      <div class="phase-num">3</div>
+      <div>
+        <div class="phase-title">Comparison report</div>
+        <div class="phase-subtitle">The real action triggers an automatic side-by-side breakdown delivered to each mod's modmail</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">11</div>
+      <div class="step-body">
+        <div class="step-title">A real mod action is taken on the post</div>
+        <div class="step-desc">
+          Any mod (or AutoModerator) takes the actual moderation action. ShadowMod detects it via the <code>onModAction</code> trigger and locks in the Outcome.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/12-feed-after-real-actions.png" alt="Subreddit feed after posts have been acted on" loading="lazy" />
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">12</div>
+      <div class="step-body">
+        <div class="step-title">Comparison report arrives in modmail</div>
+        <div class="step-desc">
+          Both the Observer and Reviewer receive a personalised report showing their call, the other mod's call, the real Outcome, and whether they matched. No spreadsheets, no manual review — it happens automatically.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/11-comparison-report-modmail.png" alt="Modmail showing comparison reports with Observer / Reviewer / Outcome table and match result" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Phase 4: Stats ─────────────────────────── -->
+  <section class="phase">
+    <div class="phase-header">
+      <div class="phase-num">4</div>
+      <div>
+        <div class="phase-title">Observer accuracy stats</div>
+        <div class="phase-subtitle">Track alignment over time across all completed reviews</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">13</div>
+      <div class="step-body">
+        <div class="step-title">Per-Observer accuracy summary</div>
+        <div class="step-desc">
+          Moderators can pull up a live accuracy summary for any Observer — showing overall alignment with Reviewers and real Outcomes across all Comparison reports in the subreddit.
+        </div>
+        <div class="step-screenshot">
+          <img src="screenshots/14-observer-accuracy-stats.png" alt="ShadowMod stats modal for u/empire-day showing 100.0% accuracy" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    <strong>ShadowMod</strong> is a free, open-source Devvit app for Reddit moderators.
+    Built for the <a href="https://www.reddit.com/r/devvit/comments/hackathon" target="_blank" rel="noopener">Reddit Mod Tools Hackathon 2026</a>.
+  </p>
+  <p style="margin-top:8px;">
+    <a href="https://github.com/earlgreylabs/shadow-mod" target="_blank" rel="noopener">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://developers.reddit.com/apps/shadow-mod" target="_blank" rel="noopener">Devvit App Page</a>
+  </p>
+</footer>
+
+</body>
+</html>
