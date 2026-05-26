@@ -3,6 +3,7 @@ import { context } from '@devvit/web/server';
 import { generateReport } from '../core/reports.js';
 import type { ReportJobData } from '@/shared/types.js';
 
+/** Hono sub-app handling scheduled job callbacks. */
 export const cron = new Hono();
 
 cron.post('/generate-report', async (c) => {

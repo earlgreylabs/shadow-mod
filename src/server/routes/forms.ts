@@ -12,23 +12,24 @@ import {
 } from '../core/decisions.js';
 import { setConfig } from '../core/config.js';
 
+/** Hono sub-app handling all form submission endpoints. */
 export const forms = new Hono();
 
+// Devvit sends form fields as a flat root object — no `values` wrapper.
+// Select fields arrive as string[], paragraph/string fields as plain string.
+
 forms.post('/observation-submit', async (c) => {
-  const ctxUserId = context.userId;
-  // Devvit sends form fields as a flat root object — no `values` wrapper.
-  // Select fields come back as string[], paragraph/string fields as string.
+  const userId = context.userId;
   const body = await c.req.json<{ action?: string | string[]; reason?: string }>();
 
-  if (!ctxUserId) {
+  if (!userId) {
     return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
   // Devvit does not forward the devvit-post header to form submission requests,
   // so postId may be absent from context. Fall back to the session stored by the menu handler.
-  const session = ctxUserId ? await getFormSession(ctxUserId) : null;
+  const session = await getFormSession(userId);
   const postId = context.postId ?? session?.postId;
-  const userId = ctxUserId;
   const username = context.username ?? session?.username;
 
   if (!postId || !username) {
@@ -68,17 +69,16 @@ forms.post('/observation-submit', async (c) => {
 });
 
 forms.post('/review-submit', async (c) => {
-  const ctxUserId = context.userId;
-  // Devvit sends form fields as a flat root object — no `values` wrapper.
+  const userId = context.userId;
   const body = await c.req.json<{ action?: string | string[]; reason?: string }>();
 
-  if (!ctxUserId) {
+  if (!userId) {
     return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
-  const session = ctxUserId ? await getFormSession(ctxUserId) : null;
+  // Devvit does not forward the devvit-post header to form submission requests.
+  const session = await getFormSession(userId);
   const postId = context.postId ?? session?.postId;
-  const userId = ctxUserId;
   const username = context.username ?? session?.username;
 
   if (!postId || !username) {
@@ -116,11 +116,10 @@ forms.post('/review-submit', async (c) => {
 });
 
 forms.post('/queue-submit', async (c) => {
-  const ctxUserId = context.userId;
-  // Devvit sends form fields as a flat root object — no `values` wrapper.
+  const userId = context.userId;
   const body = await c.req.json<{ postId?: string | string[] }>();
 
-  if (!ctxUserId) {
+  if (!userId) {
     return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
@@ -143,7 +142,6 @@ forms.post('/stats-submit', async (c) => {
 });
 
 forms.post('/settings-submit', async (c) => {
-  // Devvit sends all form fields as a flat root object — no `values` wrapper for any field type.
   const body = await c.req.json<{ reviewers?: string }>();
   const raw = body?.reviewers ?? '';
 

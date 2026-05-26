@@ -11,10 +11,12 @@ import {
 import { isReviewer, getConfig } from '../core/config.js';
 import { MOD_ACTION_LABELS } from '@/shared/types.js';
 
+/** Hono sub-app handling all menu action endpoints: observation, review, queue, stats, settings. */
 export const menu = new Hono();
 
 const TITLE_MAX_LEN = 60;
 
+// Truncates to TITLE_MAX_LEN characters to keep queue labels readable in Devvit's narrow UI.
 function truncateTitle(title: string): string {
   if (title.length <= TITLE_MAX_LEN) return title;
   return `${title.slice(0, TITLE_MAX_LEN)}...`;

@@ -4,21 +4,21 @@ import { getPendingForPost, getReviewerDecisionsForPost } from '../core/decision
 import { scheduleReport } from '../core/reports.js';
 import type { ReportJobData } from '@/shared/types.js';
 
+/** Hono sub-app handling Devvit trigger events: onModAction and onAppInstall. */
 export const triggers = new Hono();
 
-// ModAction trigger — fires on every mod action in the subreddit.
-// We use it to detect when a real action is taken on a post that has
-// a completed observer+reviewer decision pair, then schedule the report.
+// Fires on every mod action in the subreddit. Used to detect when a real action
+// lands on a post that has a completed Observer+Reviewer pair, then schedule the report.
 triggers.post('/mod-action', async (c) => {
   const body = await c.req.json<OnModActionRequest>();
 
-  // Only care about post actions
+  // Only care about post-level actions
   const post = body.targetPost;
   if (!post?.id) {
     return c.json<TriggerResponse>({});
   }
 
-  // context.postId is t3_-prefixed; normalise the proto ID to match
+  // context.postId is t3_-prefixed; normalise the trigger payload ID to match.
   const postId = post.id.startsWith('t3_') ? post.id : `t3_${post.id}`;
 
   const pending = await getPendingForPost(postId);
@@ -28,7 +28,7 @@ triggers.post('/mod-action', async (c) => {
 
   const reviewers = await getReviewerDecisionsForPost(postId);
   if (reviewers.length === 0) {
-    // Real action taken but no reviewer decision recorded — nothing to report
+    // Real action taken but no Reviewer decision recorded — nothing to report yet.
     return c.json<TriggerResponse>({});
   }
 
@@ -36,7 +36,7 @@ triggers.post('/mod-action', async (c) => {
   const postPermalink = post.permalink ?? `https://reddit.com/comments/${postId}`;
   const finalAction = body.action ?? 'unknown';
 
-  // Schedule a report job for each observer with pending_report status
+  // Schedule a report job for each Observer that has reached pending_report status.
   for (const observer of pending) {
     if (observer.status !== 'pending_report') continue;
 
@@ -55,6 +55,6 @@ triggers.post('/mod-action', async (c) => {
 });
 
 triggers.post('/app-install', async (c) => {
-  // Nothing to do on install — configuration happens via the settings menu action
+  // Configuration happens via the settings menu action — nothing to initialise on install.
   return c.json<TriggerResponse>({});
 });

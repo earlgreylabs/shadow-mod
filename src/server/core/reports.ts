@@ -9,6 +9,13 @@ import {
   getReviewerDecisionsForPost,
 } from './decisions.js';
 
+/**
+ * Assembles a Comparison report from an Observer decision, a Reviewer decision,
+ * and the final mod action that triggered report generation.
+ *
+ * Agreement is determined by action equality; reasoning differences are preserved
+ * for the Observer to review in the delivered report.
+ */
 export function buildReport(
   observer: ObserverDecision,
   reviewer: ReviewerDecision,
@@ -28,6 +35,10 @@ export function buildReport(
   };
 }
 
+/**
+ * Renders a Comparison report as a Markdown message suitable for modmail.
+ * Formats Observer vs Reviewer vs Outcome in a table with reasoning from both sides.
+ */
 export function formatReportMessage(report: Report): string {
   const agreement = report.agreement ? '✅ Match' : '❌ Diverged';
   const observerLabel = MOD_ACTION_LABELS[report.observer.action] ?? report.observer.action;
@@ -52,6 +63,11 @@ export function formatReportMessage(report: Report): string {
   ].join('\n');
 }
 
+/**
+ * Enqueues a `generate-report` scheduler job to run immediately.
+ * Scheduling rather than inline generation lets the trigger handler return quickly,
+ * avoiding Devvit's tight trigger timeout.
+ */
 export async function scheduleReport(data: ReportJobData): Promise<void> {
   await scheduler.runJob({
     name: 'generate-report',
@@ -60,6 +76,14 @@ export async function scheduleReport(data: ReportJobData): Promise<void> {
   });
 }
 
+/**
+ * Fetches the Observer and Reviewer decisions, builds the Comparison report,
+ * and delivers it to the Observer via modmail.
+ *
+ * Falls back to a mod note if modmail is unavailable. Regardless of delivery
+ * method, updates Observer stats and marks the decision as `complete`.
+ * When multiple Reviewers exist for the post, the most recently added one is used.
+ */
 export async function generateReport(data: ReportJobData, subredditName: string): Promise<void> {
   const { postId, observerId, finalAction, postTitle, postPermalink } = data;
 
