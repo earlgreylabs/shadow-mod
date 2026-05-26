@@ -78,8 +78,28 @@ export async function getPendingForPost(postId: string): Promise<ObserverDecisio
   return decisions;
 }
 
+// Returns all postIds that have at least one observation with status 'pending_review',
+// along with the observer names for display in the queue form.
+export async function getAllPending(): Promise<{ postId: string; observerNames: string[] }[]> {
+  const { members } = await redis.zScan(pendingKey(), 0, '*', 1000);
+  // Group decisions by postId, fetching each observer decision once.
+  const byPost = new Map<string, string[]>();
+  for (const { member } of members) {
+    const colonIdx = member.indexOf(':');
+    if (colonIdx < 0) continue;
+    const postId = member.slice(0, colonIdx);
+    const observerId = member.slice(colonIdx + 1);
+    const d = await getObserverDecision(postId, observerId);
+    if (!d || d.status !== 'pending_review') continue;
+    const names = byPost.get(postId) ?? [];
+    names.push(d.observerName);
+    byPost.set(postId, names);
+  }
+  return Array.from(byPost.entries()).map(([postId, observerNames]) => ({ postId, observerNames }));
+}
+
 export async function hasObserverDecision(postId: string, observerId: string): Promise<boolean> {
-  return (await redis.get(observerKey(postId, observerId))) !== undefined;
+  return Boolean(await redis.get(observerKey(postId, observerId)));
 }
 
 export async function removePending(postId: string, observerId: string): Promise<void> {

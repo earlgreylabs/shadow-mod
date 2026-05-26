@@ -8,6 +8,7 @@ import {
   getPendingForPost,
   updateObserverStatus,
   getFormSession,
+  hasObserverDecision,
 } from '../core/decisions.js';
 import { setConfig } from '../core/config.js';
 
@@ -15,11 +16,12 @@ export const forms = new Hono();
 
 forms.post('/observation-submit', async (c) => {
   const ctxUserId = context.userId;
-  // SelectField value comes back as string[] even for single-select
-  const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
+  // Devvit sends form fields as a flat root object — no `values` wrapper.
+  // Select fields come back as string[], paragraph/string fields as string.
+  const body = await c.req.json<{ action?: string | string[]; reason?: string }>();
 
   if (!ctxUserId) {
-    return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
+    return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
   // Devvit does not forward the devvit-post header to form submission requests,
@@ -30,14 +32,20 @@ forms.post('/observation-submit', async (c) => {
   const username = context.username ?? session?.username;
 
   if (!postId || !username) {
-    return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
+    return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
-  const action = body.values.action[0] as ModActionType;
-  const reason = body.values.reason?.trim();
+  const action = (Array.isArray(body.action) ? body.action[0] : body.action) as ModActionType;
+  const reason = body.reason?.trim();
 
   if (!action || !reason) {
     return c.json<UiResponse>({ showToast: 'Action and reasoning are both required.' });
+  }
+
+  if (await hasObserverDecision(postId, userId)) {
+    return c.json<UiResponse>({
+      showToast: 'You have already recorded an observation on this post.',
+    });
   }
 
   await saveObserverDecision({
@@ -61,10 +69,11 @@ forms.post('/observation-submit', async (c) => {
 
 forms.post('/review-submit', async (c) => {
   const ctxUserId = context.userId;
-  const body = await c.req.json<{ values: { action: string[]; reason: string } }>();
+  // Devvit sends form fields as a flat root object — no `values` wrapper.
+  const body = await c.req.json<{ action?: string | string[]; reason?: string }>();
 
   if (!ctxUserId) {
-    return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
+    return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
   const session = ctxUserId ? await getFormSession(ctxUserId) : null;
@@ -73,11 +82,11 @@ forms.post('/review-submit', async (c) => {
   const username = context.username ?? session?.username;
 
   if (!postId || !username) {
-    return c.json<UiResponse>({ showToast: 'Session error — please try again.' });
+    return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
   }
 
-  const action = body.values.action[0] as ModActionType;
-  const reason = body.values.reason?.trim();
+  const action = (Array.isArray(body.action) ? body.action[0] : body.action) as ModActionType;
+  const reason = body.reason?.trim();
 
   if (!action || !reason) {
     return c.json<UiResponse>({ showToast: 'Action and reasoning are both required.' });
@@ -106,18 +115,41 @@ forms.post('/review-submit', async (c) => {
   });
 });
 
+forms.post('/queue-submit', async (c) => {
+  const ctxUserId = context.userId;
+  // Devvit sends form fields as a flat root object — no `values` wrapper.
+  const body = await c.req.json<{ postId?: string | string[] }>();
+
+  if (!ctxUserId) {
+    return c.json<UiResponse>({ showToast: 'Session error: please try again.' });
+  }
+
+  const selectedPostId = Array.isArray(body.postId) ? body.postId[0] : body.postId;
+
+  if (!selectedPostId) {
+    return c.json<UiResponse>({ showToast: 'Please select a post from the queue.' });
+  }
+
+  // Navigate the Reviewer to the post so they can read it in context,
+  // then use "Record review" from the post's mod menu.
+  return c.json<UiResponse>({
+    navigateTo: `https://www.reddit.com/r/${context.subredditName}/comments/${selectedPostId.replace(/^t3_/, '')}/`,
+  });
+});
+
 forms.post('/stats-submit', async (c) => {
   // Read-only form — no action on submit
   return c.json<UiResponse>({});
 });
 
 forms.post('/settings-submit', async (c) => {
-  const body = await c.req.json<{ values: { reviewers: string } }>();
-  const raw = body.values.reviewers ?? '';
+  // Devvit sends all form fields as a flat root object — no `values` wrapper for any field type.
+  const body = await c.req.json<{ reviewers?: string }>();
+  const raw = body?.reviewers ?? '';
 
   const reviewers = raw
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().replace(/^u\//i, ''))
     .filter(Boolean);
 
   await setConfig({ reviewers });

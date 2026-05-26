@@ -7,6 +7,42 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Review queue labels show post title**: the `/queue` handler now fetches each post's title via `reddit.getPostById()` in parallel (`Promise.all`) and uses it in the select option label. Labels read `"Post title here — observed by: observer_user"` instead of the raw post ID. Titles longer than 60 characters are truncated with `...`. If the Reddit API call fails for a post, the label falls back to the post ID gracefully.
+
+---
+
+## [0.4.1] — 2026-05-25
+
+### Fixed
+
+- **Settings form always shows current Reviewers**: the `/settings` menu handler now includes the saved Reviewer list in the form `description` (`Currently saved: username1, username2` or `(none)` when empty). This is visible regardless of whether Devvit renders the `defaultValue` pre-fill. The `defaultValue` is retained as a belt-and-suspenders fallback.
+- **`u/` prefix stripped on save**: the `/settings-submit` handler now strips a leading `u/` (case-insensitive) from each username after splitting and trimming. Usernames entered as `u/EarlGrey__` are stored as `EarlGrey__`, matching the bare username that `context.username` and `isReviewer()` compare against.
+
+### No Redis schema changes
+
+Existing stored Reviewer usernames are unaffected. Any previously stored `u/`-prefixed usernames will still be mismatched; a Reviewer admin should re-save settings after upgrading to clear them.
+
+---
+
+## [0.4.0] — 2026-05-25
+
+### Added
+
+- **Review queue** (`POST /internal/menu/queue`): a new "Review queue" post-level menu action (Reviewer-only, server-side guarded). Reviewers can open it from any post to see every post subreddit-wide that has at least one `pending_review` observation. They pick a post from a select field and are taken directly into the review form for that post (chained forms via `queueForm` → `reviewForm` → existing `/review-submit`).
+- `getAllPending()` in `decisions.ts`: scans the full `pending` sorted set, groups by postId, filters to `status === 'pending_review'`, and returns `{ postId: string; observerNames: string[] }[]`.
+- `POST /internal/form/queue-submit` form handler: reads the selected postId from form values, stores a form session so `/review-submit` can resolve the post, then chains directly to the `reviewForm`.
+- `queueForm` registered in `devvit.json`.
+
+### No Redis schema changes
+
+`getAllPending()` reads the existing `pending` sorted set. No migration required.
+
+---
+
 ## [0.3.1] — 2026-05-19
 
 ### Fixed

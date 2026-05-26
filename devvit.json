@@ -23,7 +23,7 @@
       },
       {
         "label": "ShadowMod settings",
-        "description": "Configure Reviewers and Observers",
+        "description": "Configure who acts as a Reviewer in this subreddit",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/settings"
@@ -34,12 +34,20 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/stats"
+      },
+      {
+        "label": "Review queue",
+        "description": "See posts with pending observations and navigate to them",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/queue"
       }
     ]
   },
   "forms": {
     "observationForm": "/internal/form/observation-submit",
     "reviewForm": "/internal/form/review-submit",
+    "queueForm": "/internal/form/queue-submit",
     "settingsForm": "/internal/form/settings-submit",
     "statsForm": "/internal/form/stats-submit"
   },

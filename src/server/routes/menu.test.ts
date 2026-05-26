@@ -53,7 +53,11 @@ const mocks = vi.hoisted(() => {
   };
   return {
     redisMock,
-    redditMock: { sendPrivateMessage: vi.fn(), addModNote: vi.fn() },
+    redditMock: {
+      sendPrivateMessage: vi.fn(),
+      addModNote: vi.fn(),
+      getPostById: vi.fn(async (id: string) => ({ title: `Title for ${id}` })),
+    },
     schedulerMock: { runJob: vi.fn() },
     ctx: {} as {
       postId?: string;
@@ -175,6 +179,106 @@ describe('POST /menu/review', () => {
     };
     expect(body.showForm?.name).toBe('reviewForm');
     expect(body.showForm?.form.description).toContain('observer_user');
+  });
+});
+
+describe('POST /menu/queue', () => {
+  beforeEach(() => {
+    mocks.ctx.userId = 't2_rev';
+    mocks.ctx.username = 'reviewer_user';
+  });
+
+  it('rejects non-reviewers', async () => {
+    const res = await postJson(mountMenu(), '/menu/queue');
+    const body = (await res.json()) as { showToast?: string };
+    expect(body.showToast).toMatch(/Only Reviewers/i);
+  });
+
+  it('returns a toast when no posts are pending', async () => {
+    await setConfig({ reviewers: ['reviewer_user'] });
+    const res = await postJson(mountMenu(), '/menu/queue');
+    const body = (await res.json()) as { showToast?: string };
+    expect(body.showToast).toMatch(/No posts are waiting/i);
+  });
+
+  it('shows queue form with pending post options when observations exist', async () => {
+    await setConfig({ reviewers: ['reviewer_user'] });
+    await saveObserverDecision({
+      id: 't3_abc:t2_obs',
+      postId: 't3_abc',
+      observerId: 't2_obs',
+      observerName: 'observer_user',
+      action: 'remove',
+      reason: 'spam',
+      timestamp: '2026-05-16T00:00:00.000Z',
+      status: 'pending_review',
+    });
+
+    const res = await postJson(mountMenu(), '/menu/queue');
+    const body = (await res.json()) as {
+      showForm?: {
+        name: string;
+        form: { fields: { options: { label: string; value: string }[] }[] };
+      };
+    };
+    expect(body.showForm?.name).toBe('queueForm');
+    const options = body.showForm?.form.fields[0]?.options;
+    expect(options).toBeDefined();
+    const option = options?.find((o) => o.value === 't3_abc');
+    expect(option).toBeDefined();
+    expect(option?.label).toContain('Title for t3_abc');
+    expect(option?.label).toContain('observer_user');
+  });
+
+  it('falls back to postId in label when getPostById throws', async () => {
+    mocks.redditMock.getPostById.mockRejectedValueOnce(new Error('network error'));
+    await setConfig({ reviewers: ['reviewer_user'] });
+    await saveObserverDecision({
+      id: 't3_abc:t2_obs',
+      postId: 't3_abc',
+      observerId: 't2_obs',
+      observerName: 'observer_user',
+      action: 'remove',
+      reason: 'spam',
+      timestamp: '2026-05-16T00:00:00.000Z',
+      status: 'pending_review',
+    });
+
+    const res = await postJson(mountMenu(), '/menu/queue');
+    const body = (await res.json()) as {
+      showForm?: {
+        name: string;
+        form: { fields: { options: { label: string; value: string }[] }[] };
+      };
+    };
+    const options = body.showForm?.form.fields[0]?.options;
+    const option = options?.find((o) => o.value === 't3_abc');
+    expect(option?.label).toContain('t3_abc');
+  });
+
+  it('does not include non-pending_review observations in the queue', async () => {
+    await setConfig({ reviewers: ['reviewer_user'] });
+    await saveObserverDecision({
+      id: 't3_abc:t2_obs',
+      postId: 't3_abc',
+      observerId: 't2_obs',
+      observerName: 'observer_user',
+      action: 'remove',
+      reason: 'spam',
+      timestamp: '2026-05-16T00:00:00.000Z',
+      status: 'pending_report',
+    });
+
+    const res = await postJson(mountMenu(), '/menu/queue');
+    const body = (await res.json()) as { showToast?: string };
+    expect(body.showToast).toMatch(/No posts are waiting/i);
+  });
+
+  it('reports a session error when context is missing user', async () => {
+    mocks.ctx.userId = undefined;
+    const res = await postJson(mountMenu(), '/menu/queue');
+    const body = (await res.json()) as { showToast?: string };
+    expect(body.showToast).toMatch(/Could not identify/i);
   });
 });
 

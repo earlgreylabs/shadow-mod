@@ -108,7 +108,8 @@ beforeEach(() => {
 describe('POST /form/observation-submit', () => {
   it('persists an observer decision', async () => {
     const res = await submit(mountForms(), '/form/observation-submit', {
-      values: { action: ['remove'], reason: 'spammy' },
+      action: ['remove'],
+      reason: 'spammy',
     });
     expect(res.status).toBe(200);
     const stored = await getObserverDecision('t3_abc', 't2_obs');
@@ -119,7 +120,8 @@ describe('POST /form/observation-submit', () => {
 
   it('rejects empty submissions with a toast', async () => {
     const res = await submit(mountForms(), '/form/observation-submit', {
-      values: { action: [], reason: '' },
+      action: [],
+      reason: '',
     });
     const body = (await res.json()) as { showToast?: string };
     expect(body.showToast).toMatch(/required/i);
@@ -143,7 +145,8 @@ describe('POST /form/review-submit', () => {
     mocks.ctx.username = 'reviewer_user';
 
     const res = await submit(mountForms(), '/form/review-submit', {
-      values: { action: ['approve'], reason: 'fine' },
+      action: ['approve'],
+      reason: 'fine',
     });
     expect(res.status).toBe(200);
 
@@ -158,7 +161,7 @@ describe('POST /form/review-submit', () => {
 describe('POST /form/settings-submit', () => {
   it('parses comma-separated reviewer usernames into config', async () => {
     const res = await submit(mountForms(), '/form/settings-submit', {
-      values: { reviewers: 'alice, bob, ,carol' },
+      reviewers: 'alice, bob, ,carol',
     });
     expect(res.status).toBe(200);
     const config = await getConfig();

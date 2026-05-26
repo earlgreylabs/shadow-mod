@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
-import { context } from '@devvit/web/server';
+import { context, reddit } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
 import {
   hasObserverDecision,
   getPendingForPost,
+  getAllPending,
   getStats,
   storeFormSession,
 } from '../core/decisions.js';
@@ -11,6 +12,13 @@ import { isReviewer, getConfig } from '../core/config.js';
 import { MOD_ACTION_LABELS } from '@/shared/types.js';
 
 export const menu = new Hono();
+
+const TITLE_MAX_LEN = 60;
+
+function truncateTitle(title: string): string {
+  if (title.length <= TITLE_MAX_LEN) return title;
+  return `${title.slice(0, TITLE_MAX_LEN)}...`;
+}
 
 const ACTION_OPTIONS = Object.entries(MOD_ACTION_LABELS).map(([value, label]) => ({
   label,
@@ -119,6 +127,66 @@ menu.post('/review', async (c) => {
   });
 });
 
+menu.post('/queue', async (c) => {
+  const { userId, username } = context;
+
+  if (!userId || !username) {
+    return c.json<UiResponse>({ showToast: 'Could not identify user.' });
+  }
+
+  if (!(await isReviewer(username))) {
+    return c.json<UiResponse>({
+      showToast:
+        'Only Reviewers can access the review queue. Ask your admin to add you in ShadowMod settings.',
+    });
+  }
+
+  const pending = await getAllPending();
+
+  if (pending.length === 0) {
+    return c.json<UiResponse>({ showToast: 'No posts are waiting for review.' });
+  }
+
+  const selectOptions = await Promise.all(
+    pending.map(async ({ postId, observerNames }) => {
+      let displayTitle = postId;
+      try {
+        const prefixedId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
+        const post = await reddit.getPostById(prefixedId);
+        displayTitle = truncateTitle(post.title);
+      } catch {
+        // Fall back to postId if the fetch fails
+      }
+      return {
+        label: `${displayTitle} — observed by: ${observerNames.join(', ')}`,
+        value: postId,
+      };
+    }),
+  );
+
+  await storeFormSession({ postId: pending[0].postId, userId, username });
+
+  return c.json<UiResponse>({
+    showForm: {
+      name: 'queueForm',
+      form: {
+        title: 'Review queue',
+        description: `${pending.length} post${pending.length === 1 ? '' : 's'} waiting for review. Select one to go to the post, then use "Record review" from the mod menu.`,
+        fields: [
+          {
+            name: 'postId',
+            label: 'Post',
+            type: 'select',
+            options: selectOptions,
+            required: true,
+          },
+        ],
+        acceptLabel: 'Go to post',
+      },
+    },
+  });
+});
+
 menu.post('/stats', async (c) => {
   const { userId, username } = context;
 
@@ -143,7 +211,7 @@ menu.post('/stats', async (c) => {
     showForm: {
       name: 'statsForm',
       form: {
-        title: `ShadowMod — u/${username}`,
+        title: `ShadowMod: u/${username}`,
         description: 'Your observation accuracy across all completed reviews.',
         fields: [
           {
@@ -188,14 +256,14 @@ menu.post('/stats', async (c) => {
 
 menu.post('/settings', async (c) => {
   const config = await getConfig();
+  const savedList = config.reviewers.length > 0 ? config.reviewers.join(', ') : '(none)';
 
   return c.json<UiResponse>({
     showForm: {
       name: 'settingsForm',
       form: {
         title: 'ShadowMod settings',
-        description:
-          'Comma-separated list of Reddit usernames who act as reviewers for this subreddit.',
+        description: `Comma-separated list of Reddit usernames who act as Reviewers for this subreddit.\n\nCurrently saved: ${savedList}`,
         fields: [
           {
             name: 'reviewers',

@@ -34,13 +34,13 @@ export function formatReportMessage(report: Report): string {
   const reviewerLabel = MOD_ACTION_LABELS[report.reviewer.action] ?? report.reviewer.action;
 
   return [
-    `**ShadowMod Report** — [${report.postTitle}](${report.postPermalink})`,
+    `**ShadowMod Report**: [${report.postTitle}](${report.postPermalink})`,
     '',
     `| | Decision | Reasoning |`,
     `|---|---|---|`,
     `| Your call | ${observerLabel} | ${report.observer.reason} |`,
     `| Reviewer | ${reviewerLabel} | ${report.reviewer.reason} |`,
-    `| Final outcome | ${report.finalAction} | — |`,
+    `| Final outcome | ${report.finalAction} | N/A |`,
     '',
     `**Result:** ${agreement}`,
     '',

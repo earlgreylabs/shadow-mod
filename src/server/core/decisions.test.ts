@@ -86,6 +86,7 @@ import {
   getReviewerDecision,
   getReviewerDecisionsForPost,
   getPendingForPost,
+  getAllPending,
 } from './decisions.js';
 import type { ObserverDecision, ReviewerDecision } from '@/shared/types.js';
 
@@ -172,6 +173,67 @@ describe('reviewer decisions', () => {
     expect(all).toHaveLength(2);
     const ids = all.map((r) => r.reviewerId).sort();
     expect(ids).toEqual(['t2_rev', 't2_rev2']);
+  });
+});
+
+describe('getAllPending', () => {
+  beforeEach(() => {
+    redisMock._reset();
+  });
+
+  it('returns empty array when no observations exist', async () => {
+    const result = await getAllPending();
+    expect(result).toEqual([]);
+  });
+
+  it('returns a single entry with observer names for a pending_review observation', async () => {
+    await saveObserverDecision(baseObserver);
+    const result = await getAllPending();
+    expect(result).toHaveLength(1);
+    expect(result[0].postId).toBe('t3_abc');
+    expect(result[0].observerNames).toEqual(['observer_user']);
+  });
+
+  it('groups multiple observers on the same post', async () => {
+    await saveObserverDecision(baseObserver);
+    await saveObserverDecision({
+      ...baseObserver,
+      id: 't3_abc:t2_obs2',
+      observerId: 't2_obs2',
+      observerName: 'observer_two',
+    });
+    const result = await getAllPending();
+    expect(result).toHaveLength(1);
+    expect(result[0].postId).toBe('t3_abc');
+    expect(result[0].observerNames).toHaveLength(2);
+    expect(result[0].observerNames).toContain('observer_user');
+    expect(result[0].observerNames).toContain('observer_two');
+  });
+
+  it('returns entries for each distinct post', async () => {
+    await saveObserverDecision(baseObserver);
+    await saveObserverDecision({
+      ...baseObserver,
+      id: 't3_xyz:t2_obs',
+      postId: 't3_xyz',
+      observerName: 'observer_user',
+    });
+    const result = await getAllPending();
+    expect(result).toHaveLength(2);
+    const postIds = result.map((r) => r.postId).sort();
+    expect(postIds).toEqual(['t3_abc', 't3_xyz']);
+  });
+
+  it('excludes observations that are not pending_review', async () => {
+    await saveObserverDecision({ ...baseObserver, status: 'pending_report' });
+    const result = await getAllPending();
+    expect(result).toEqual([]);
+  });
+
+  it('excludes complete observations', async () => {
+    await saveObserverDecision({ ...baseObserver, status: 'complete' });
+    const result = await getAllPending();
+    expect(result).toEqual([]);
   });
 });
 
