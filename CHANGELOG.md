@@ -11,6 +11,14 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.1.0] — 2026-05-26
+
+### Added
+
+- **Reviewer notification**: after a real mod action closes a post, the Reviewer now receives a private report alongside the Observer. The report is framed from the Reviewer's perspective: Observer's call, Reviewer's call, final outcome, and whether they matched. Delivered via `sendPrivateMessageAsSubreddit` (sent from the subreddit rather than the app account to bypass personal DM restrictions), with fallback to a direct PM and then a mod note. The shared mod inbox is never used, keeping feedback private between the Reviewer and the app.
+
+---
+
 ## [1.0.0] — 2026-05-26
 
 ### Added

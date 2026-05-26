@@ -108,10 +108,13 @@ export async function scheduleReport(data: ReportJobData): Promise<void> {
 
 /**
  * Fetches the Observer and Reviewer decisions, builds the Comparison report,
- * and delivers it to the Observer via modmail.
+ * and delivers it to both parties.
  *
- * Falls back to a mod note if modmail is unavailable. Regardless of delivery
- * method, updates Observer stats and marks the decision as `complete`.
+ * Observer receives a personal DM (falls back to mod note).
+ * Reviewer receives a mod inbox message so it lands in the subreddit's mod mail,
+ * bypassing any personal DM restrictions (falls back to a personal DM, then mod note).
+ *
+ * Regardless of delivery method, updates Observer stats and marks the decision as `complete`.
  * When multiple Reviewers exist for the post, the most recently added one is used.
  */
 export async function generateReport(data: ReportJobData, subredditName: string): Promise<void> {
@@ -134,7 +137,8 @@ export async function generateReport(data: ReportJobData, subredditName: string)
       subject: `ShadowMod: your decision on "${postTitle.slice(0, 60)}"`,
       text: observerMessage,
     });
-  } catch {
+  } catch (err) {
+    console.warn(`[shadow-mod] observer PM failed (${String(err)}); falling back to mod note`);
     await reddit.addModNote({
       subreddit: subredditName,
       user: observer.observerName,
@@ -142,18 +146,35 @@ export async function generateReport(data: ReportJobData, subredditName: string)
     });
   }
 
+  // Send as subreddit so the message comes from r/subreddit rather than the app account,
+  // bypassing personal DM restrictions without routing to the shared mod inbox.
   try {
-    await reddit.sendPrivateMessage({
+    await reddit.sendPrivateMessageAsSubreddit({
+      fromSubredditName: subredditName,
       to: reviewer.reviewerName,
       subject: `ShadowMod: update on u/${observer.observerName}'s observation`,
       text: reviewerMessage,
     });
-  } catch {
-    await reddit.addModNote({
-      subreddit: subredditName,
-      user: reviewer.reviewerName,
-      note: `ShadowMod: u/${observer.observerName} chose ${observer.action}, you chose ${reviewer.action}. ${report.agreement ? 'Match' : 'Diverged'}`,
-    });
+  } catch (err) {
+    console.warn(
+      `[shadow-mod] reviewer subreddit PM failed (${String(err)}); falling back to direct PM`,
+    );
+    try {
+      await reddit.sendPrivateMessage({
+        to: reviewer.reviewerName,
+        subject: `ShadowMod: update on u/${observer.observerName}'s observation`,
+        text: reviewerMessage,
+      });
+    } catch (err2) {
+      console.warn(
+        `[shadow-mod] reviewer direct PM failed (${String(err2)}); falling back to mod note`,
+      );
+      await reddit.addModNote({
+        subreddit: subredditName,
+        user: reviewer.reviewerName,
+        note: `ShadowMod: u/${observer.observerName} chose ${observer.action}, you chose ${reviewer.action}. ${report.agreement ? 'Match' : 'Diverged'}`,
+      });
+    }
   }
 
   await incrementStats(observerId, report.agreement);
