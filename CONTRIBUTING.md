@@ -82,4 +82,4 @@ Open a GitHub issue with:
 
 ## Licence
 
-By contributing, you agree that your contributions will be licensed under the [MIT Licence](./LICENSING.md).
+By contributing, you agree that your contributions will be licensed under the [MIT Licence](./LICENSE.md).

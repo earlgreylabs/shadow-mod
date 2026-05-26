@@ -101,7 +101,7 @@ App-level config lives in `devvit.json`. Dev subreddit override: `dev.subreddit 
 
 ## Releases
 
-See [CHANGELOG.md](./CHANGELOG.md) for version history. Release process is documented in `CLAUDE.md` (local only).
+See [CHANGELOG.md](./CHANGELOG.md) for version history.
 
 ---
 
