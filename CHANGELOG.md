@@ -11,6 +11,27 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0] — 2026-05-26
+
+### Added
+
+- **PRIVACY.md**: documents that all data stays within Reddit/Devvit infrastructure — no external servers or databases.
+- **CONTRIBUTING.md**: development workflow, TypeScript conventions, CHANGELOG rules, PR format, and issue reporting guide.
+- **LICENSE.md**: MIT licence.
+- **`.agents/rules/`**: internal AI tooling docs covering Redis patterns (Zod conventions, sorted-set format, `Promise.all`) and Devvit patterns (form session bridge, guard clauses, `t3_` prefix normalisation).
+
+### Changed
+
+- **README.md**: restructured to serve as both app directory listing and developer reference. Problem statement, how-it-works steps, and key design decisions now lead; technical sections follow.
+- **HACKATHON.md**: fully synced with v0.4.2 implementation. Corrected Core Flow (pull-based Review queue replaces push notification), Components table (menu actions and modmail, not custom post types), data model (three-state status, correct field names), Storage (Devvit Redis with key pattern table), and Open Questions (resolved KV Store and role-gating items; added stale-observation and zScan pagination as open).
+- **JSDoc on all exports**: every exported function, type alias, and schema now has a documentation comment with business/semantic context, per Google TypeScript guidelines.
+- **Parallel Redis fetches**: `getPendingForPost`, `getAllPending`, and `getReviewerDecisionsForPost` now use `Promise.all` instead of sequential `await` inside loops.
+- **`isReviewer`**: uses `.some()` with short-circuit evaluation instead of `.map().includes()`.
+- **`splitMember` helper**: extracted to replace repeated `indexOf(':')` pattern across three functions in `decisions.ts`.
+- **`forms.ts`**: removed redundant ternary guards after early-return checks; collapsed `ctxUserId`/`userId` alias.
+
+---
+
 ## [0.4.2] — 2026-05-26
 
 ### Added
