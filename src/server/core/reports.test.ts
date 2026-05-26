@@ -150,11 +150,17 @@ describe('generateReport', () => {
   it('delivers via modmail, updates stats and status on success', async () => {
     await saveObserverDecision(observer);
     await saveReviewerDecision(reviewer);
-    redditMock.sendPrivateMessage.mockResolvedValueOnce(undefined);
+    redditMock.sendPrivateMessage.mockResolvedValue(undefined);
 
     await generateReport(jobData, 'shadow_mod_dev');
 
-    expect(redditMock.sendPrivateMessage).toHaveBeenCalledOnce();
+    expect(redditMock.sendPrivateMessage).toHaveBeenCalledTimes(2);
+    expect(redditMock.sendPrivateMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'observer_user' }),
+    );
+    expect(redditMock.sendPrivateMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'reviewer_user' }),
+    );
     expect(redditMock.addModNote).not.toHaveBeenCalled();
 
     const stats = await getStats('t2_obs');
@@ -187,11 +193,11 @@ describe('generateReport', () => {
       reviewerName: 'reviewer_two',
       action: 'approve',
     });
-    redditMock.sendPrivateMessage.mockResolvedValueOnce(undefined);
+    redditMock.sendPrivateMessage.mockResolvedValue(undefined);
 
     await updateObserverStatus('t3_abc', 't2_obs', 'pending_report');
     await generateReport(jobData, 'shadow_mod_dev');
 
-    expect(redditMock.sendPrivateMessage).toHaveBeenCalledOnce();
+    expect(redditMock.sendPrivateMessage).toHaveBeenCalledTimes(2);
   });
 });
