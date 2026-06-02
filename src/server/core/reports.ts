@@ -146,28 +146,29 @@ export async function generateReport(data: ReportJobData, subredditName: string)
     });
   }
 
-  // Send as subreddit so the message comes from r/subreddit rather than the app account,
-  // bypassing personal DM restrictions without routing to the shared mod inbox.
   try {
-    await reddit.sendPrivateMessageAsSubreddit({
-      fromSubredditName: subredditName,
+    await reddit.sendPrivateMessage({
       to: reviewer.reviewerName,
       subject: `ShadowMod: update on u/${observer.observerName}'s observation`,
       text: reviewerMessage,
     });
   } catch (err) {
     console.warn(
-      `[shadow-mod] reviewer subreddit PM failed (${String(err)}); falling back to direct PM`,
+      `[shadow-mod] reviewer direct PM failed (${String(err)}); falling back to modmail`,
     );
     try {
-      await reddit.sendPrivateMessage({
-        to: reviewer.reviewerName,
+      const subredditInfo = await reddit.getSubredditInfoByName(subredditName);
+      if (!subredditInfo.id) {
+        throw new Error('Subreddit ID not found');
+      }
+      await reddit.modMail.createModInboxConversation({
+        subredditId: subredditInfo.id as `t5_${string}`,
         subject: `ShadowMod: update on u/${observer.observerName}'s observation`,
-        text: reviewerMessage,
+        bodyMarkdown: reviewerMessage,
       });
-    } catch (err2) {
+    } catch (modmailErr) {
       console.warn(
-        `[shadow-mod] reviewer direct PM failed (${String(err2)}); falling back to mod note`,
+        `[shadow-mod] reviewer modmail fallback failed (${String(modmailErr)}); falling back to mod note`,
       );
       await reddit.addModNote({
         subreddit: subredditName,
@@ -178,6 +179,7 @@ export async function generateReport(data: ReportJobData, subredditName: string)
   }
 
   await incrementStats(observerId, report.agreement);
+  await incrementStats(reviewer.reviewerId, report.agreement);
   await updateObserverStatus(postId, observerId, 'complete');
   await removePending(postId, observerId);
 }

@@ -45,36 +45,36 @@ jobs:
           mkdir -p "$HOME/.devvit"
           echo "$DEVVIT_TOKEN" > "$HOME/.devvit/token"
 
-      - name: Upload to Reddit Developer Platform
-        run: devvit upload
+      - name: Publish to Reddit Developer Platform
+        run: devvit publish --public
 
-      - name: Generate changelog
+      - name: Generate changelog from CHANGELOG.md
         id: changelog
         run: |
-          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | sed -n '2p')
-          CURR_TAG=${GITHUB_REF_NAME}
-          if [ -z "$PREV_TAG" ]; then
-            RANGE="$CURR_TAG"
-            LOG=$(git log --pretty="- %s (%h)" "$CURR_TAG")
-          else
-            RANGE="$PREV_TAG..$CURR_TAG"
-            LOG=$(git log --pretty="- %s (%h)" "$PREV_TAG..$CURR_TAG")
-          fi
-          echo "log<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$LOG" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          node -e "
+          const fs = require('fs');
+          const tag = process.env.GITHUB_REF_NAME;
+          const version = tag.startsWith('v') ? tag.slice(1) : tag;
+          const content = fs.readFileSync('CHANGELOG.md', 'utf8');
+          const regex = new RegExp('##\\\\\\s*\\\\[(' + version.replace(/\\./g, '\\\\.') + ')\\\\]');
+          const match = content.match(regex);
+          if (!match) {
+            console.error('Could not find version header for [' + version + '] in CHANGELOG.md');
+            process.exit(1);
+          }
+          const startIndex = match.index + match[0].length;
+          const rest = content.slice(startIndex);
+          const nextHeaderIndex = rest.search(/\\r?\\n##\\s*\\[/);
+          const section = nextHeaderIndex !== -1 ? rest.slice(0, nextHeaderIndex) : rest;
+          const cleanSection = section.trim().replace(/^.*?(\\r?\\n)/, '').trim().replace(/\\r?\\n---\\s*$/, '').trim();
+          fs.writeFileSync('release_notes.txt', cleanSection);
+          "
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          body: |
-            ## What's changed
-
-            ${{ steps.changelog.outputs.log }}
-
-            ---
-            Uploaded to the Reddit Developer Platform as `shadow-mod` ${{ github.ref_name }}.
+          body_path: release_notes.txt
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}

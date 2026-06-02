@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const strings = new Map<string, string>();
   const hashes = new Map<string, Map<string, string>>();
   const zsets = new Map<string, ZMember[]>();
+  const settingsValues = new Map<string, any>();
   const globToRegex = (glob: string): RegExp =>
     new RegExp(`^${glob.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
 
@@ -51,8 +52,21 @@ const mocks = vi.hoisted(() => {
       zsets.clear();
     },
   };
+
+  const settingsMock = {
+    get: vi.fn(async (key: string) => settingsValues.get(key)),
+    getAll: vi.fn(async () => Object.fromEntries(settingsValues.entries())),
+    set: vi.fn(async (key: string, value: any) => {
+      settingsValues.set(key, value);
+    }),
+    _reset() {
+      settingsValues.clear();
+    },
+  };
+
   return {
     redisMock,
+    settingsMock,
     redditMock: {
       sendPrivateMessage: vi.fn(),
       addModNote: vi.fn(),
@@ -74,14 +88,18 @@ vi.mock('@devvit/web/server', () => ({
   redis: mocks.redisMock,
   reddit: mocks.redditMock,
   scheduler: mocks.schedulerMock,
+  settings: mocks.settingsMock,
   get context() {
     return mocks.ctx;
   },
 }));
 
 import { menu } from './menu.js';
-import { setConfig } from '../core/config.js';
 import { saveObserverDecision } from '../core/decisions.js';
+
+async function setConfig(config: { reviewers: string[] }): Promise<void> {
+  await mocks.settingsMock.set('reviewers', config.reviewers.join(', '));
+}
 
 function mountMenu() {
   const app = new Hono();
@@ -95,6 +113,7 @@ async function postJson(app: Hono, path: string) {
 
 beforeEach(() => {
   redisMock._reset();
+  mocks.settingsMock._reset();
   mocks.ctx.postId = 't3_abc';
   mocks.ctx.userId = 't2_obs';
   mocks.ctx.username = 'observer_user';
@@ -283,20 +302,80 @@ describe('POST /menu/queue', () => {
 });
 
 describe('POST /menu/stats', () => {
-  it('reports zero stats when nothing recorded', async () => {
+  it('reports zero stats when nothing recorded for observer', async () => {
     const res = await postJson(mountMenu(), '/menu/stats');
     const body = (await res.json()) as { showToast?: string };
     expect(body.showToast).toMatch(/No completed observations/i);
   });
-});
 
-describe('POST /menu/settings', () => {
-  it('shows settings form with current reviewers prefilled', async () => {
-    await setConfig({ reviewers: ['alice', 'bob'] });
-    const res = await postJson(mountMenu(), '/menu/settings');
+  it('reports zero stats when nothing recorded for reviewer', async () => {
+    await setConfig({ reviewers: ['observer_user'] });
+    const res = await postJson(mountMenu(), '/menu/stats');
+    const body = (await res.json()) as { showToast?: string };
+    expect(body.showToast).toMatch(/No completed reviews/i);
+  });
+
+  it('falls back to Redis config when native setting is empty', async () => {
+    await redisMock.set('config:reviewers', JSON.stringify({ reviewers: ['observer_user'] }));
+    const res = await postJson(mountMenu(), '/menu/stats');
+    const body = (await res.json()) as { showToast?: string };
+    expect(body.showToast).toMatch(/No completed reviews/i);
+  });
+
+  it('returns observer stats form when stats exist', async () => {
+    await redisMock.hIncrBy('stats:t2_obs', 'total', 5);
+    await redisMock.hIncrBy('stats:t2_obs', 'correct', 4);
+    await redisMock.hIncrBy('stats:t2_obs', 'wrong', 1);
+
+    const res = await postJson(mountMenu(), '/menu/stats');
     const body = (await res.json()) as {
-      showForm?: { form: { fields: { defaultValue?: string }[] } };
+      showForm?: {
+        name: string;
+        form: {
+          title: string;
+          description: string;
+          fields: { name: string; label: string; defaultValue: string }[];
+        };
+      };
     };
-    expect(body.showForm?.form.fields[0]?.defaultValue).toBe('alice, bob');
+    expect(body.showForm?.name).toBe('statsForm');
+    expect(body.showForm?.form.title).toContain('Observer');
+    const fields = body.showForm?.form.fields;
+    expect(fields?.find((f) => f.name === 'total')?.label).toBe('Total completed');
+    expect(fields?.find((f) => f.name === 'total')?.defaultValue).toBe('5');
+    expect(fields?.find((f) => f.name === 'correct')?.label).toBe('Matched reviewer');
+    expect(fields?.find((f) => f.name === 'correct')?.defaultValue).toBe('4');
+    expect(fields?.find((f) => f.name === 'wrong')?.label).toBe('Diverged');
+    expect(fields?.find((f) => f.name === 'wrong')?.defaultValue).toBe('1');
+    expect(fields?.find((f) => f.name === 'accuracy')?.defaultValue).toBe('80.0%');
+  });
+
+  it('returns reviewer stats form when stats exist', async () => {
+    await setConfig({ reviewers: ['observer_user'] });
+    await redisMock.hIncrBy('stats:t2_obs', 'total', 10);
+    await redisMock.hIncrBy('stats:t2_obs', 'correct', 7);
+    await redisMock.hIncrBy('stats:t2_obs', 'wrong', 3);
+
+    const res = await postJson(mountMenu(), '/menu/stats');
+    const body = (await res.json()) as {
+      showForm?: {
+        name: string;
+        form: {
+          title: string;
+          description: string;
+          fields: { name: string; label: string; defaultValue: string }[];
+        };
+      };
+    };
+    expect(body.showForm?.name).toBe('statsForm');
+    expect(body.showForm?.form.title).toContain('Reviewer');
+    const fields = body.showForm?.form.fields;
+    expect(fields?.find((f) => f.name === 'total')?.label).toBe('Total reviews compared');
+    expect(fields?.find((f) => f.name === 'total')?.defaultValue).toBe('10');
+    expect(fields?.find((f) => f.name === 'correct')?.label).toBe('Trainees agreed');
+    expect(fields?.find((f) => f.name === 'correct')?.defaultValue).toBe('7');
+    expect(fields?.find((f) => f.name === 'wrong')?.label).toBe('Trainees diverged');
+    expect(fields?.find((f) => f.name === 'wrong')?.defaultValue).toBe('3');
+    expect(fields?.find((f) => f.name === 'accuracy')?.defaultValue).toBe('70.0%');
   });
 });

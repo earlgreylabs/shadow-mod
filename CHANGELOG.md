@@ -9,6 +9,30 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Reviewer Stats tracking**: Reviewers now have their own stats recorded when reports are compiled. Checking stats as a Reviewer displays their total reviews compared, trainees agreed, trainees diverged, and the trainee agreement rate.
+- **Modmail delivery fallback**: If a report PM to a reviewer fails (e.g. because they have PMs/DMs disabled), the app now automatically falls back to sending the report to the subreddit's Mod Inbox (modmail).
+- **Redis configuration fallback**: `getConfig()` now falls back to reading from Redis if the native Devvit settings are empty, providing backward compatibility with older configurations.
+- **Moderation Lifecycle panel**: Added a styled, responsive CSS/HTML panel in `docs/index.html` visualizing the 3-step lifecycle.
+- **Out-of-order execution support**: Reviewers can now review posts that have already had real mod actions taken on them. The app detects this via `reddit.getPostById` and schedules/generates the comparison report immediately.
+- **Local release automation**: Added `scripts/release.js` (registered as `pnpm run release`) to automate checking Git status, prompting for version bump, updating package version and CHANGELOG.md, running validation checks, committing, and git tagging.
+
+### Changed
+
+- **Trainee/Senior prefixes**: Prefixed the post-level mod menu descriptions with `(trainee)` and `(senior)` to clarify roles.
+- **Review queue label**: Renamed the "Review queue" mod menu action and form title to "ShadowMod review queue" to improve scannability.
+- **Settings documentation**: Updated `docs/index.html` setup steps to describe configuring Reviewer lists via Mod Tools -> Apps -> ShadowMod -> Installation Settings.
+- **Devvit 0.13.0 Upgrade**: Upgraded to `@devvit/start`, `@devvit/web`, and `devvit` dependencies to `0.13.0`.
+- **Subreddit App Settings**: Migrated config settings from custom Redis-based forms to native Reddit **Mod Tools -> Apps -> ShadowMod -> Settings**. Deleted old custom settings menu actions and form handlers.
+- **Report Delivery**: Switched from modmail reports to sending direct PMs to both the Observer and Reviewer via `reddit.sendPrivateMessage` (with fallback to mod notes) to prevent modmail clutter.
+- **GitHub Release Workflow**: Updated release workflow to automate public publishing (`devvit publish --public`) and extract release notes from `CHANGELOG.md` dynamically.
+
+### Fixed
+
+- **Redundant stats buttons**: Removed the redundant "Done"/"Close" double buttons on the read-only stats modal, leaving a single "Close" action.
+- **Report scheduling race conditions**: Implemented atomic locking using `redis.zRem` in the `onModAction` trigger and `/review-submit` form to prevent duplicate report generation under high concurrent actions.
+
 ---
 
 ## [1.1.0] — 2026-05-26

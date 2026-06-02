@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import type { OnModActionRequest, TriggerResponse } from '@devvit/web/shared';
-import { getPendingForPost, getReviewerDecisionsForPost } from '../core/decisions.js';
+import {
+  getPendingForPost,
+  getReviewerDecisionsForPost,
+  updateObserverStatus,
+  removePending,
+} from '../core/decisions.js';
 import { scheduleReport } from '../core/reports.js';
 import type { ReportJobData } from '@/shared/types.js';
 
@@ -39,6 +44,14 @@ triggers.post('/mod-action', async (c) => {
   // Schedule a report job for each Observer that has reached pending_report status.
   for (const observer of pending) {
     if (observer.status !== 'pending_report') continue;
+
+    // Atomic check: remove from pending sorted set. If return value is 0,
+    // another trigger or review submit has already processed this report!
+    const removed = await removePending(postId, observer.observerId);
+    if (removed === 0) continue;
+
+    // Transition status to complete in the background.
+    await updateObserverStatus(postId, observer.observerId, 'complete');
 
     const jobData: ReportJobData = {
       postId,

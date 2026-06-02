@@ -131,12 +131,8 @@ export async function hasObserverDecision(postId: string, observerId: string): P
   return Boolean(await redis.get(observerKey(postId, observerId)));
 }
 
-/**
- * Removes an entry from the pending sorted set, typically after a report is delivered.
- * Does not delete the underlying Observer decision record.
- */
-export async function removePending(postId: string, observerId: string): Promise<void> {
-  await redis.zRem(pendingKey(), [`${postId}:${observerId}`]);
+export async function removePending(postId: string, observerId: string): Promise<number> {
+  return await redis.zRem(pendingKey(), [`${postId}:${observerId}`]);
 }
 
 // --- Reviewer decisions ---

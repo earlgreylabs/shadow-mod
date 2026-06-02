@@ -8,7 +8,7 @@ import {
   getStats,
   storeFormSession,
 } from '../core/decisions.js';
-import { isReviewer, getConfig } from '../core/config.js';
+import { isReviewer } from '../core/config.js';
 import { MOD_ACTION_LABELS } from '@/shared/types.js';
 
 /** Hono sub-app handling all menu action endpoints: observation, review, queue, stats, settings. */
@@ -172,7 +172,7 @@ menu.post('/queue', async (c) => {
     showForm: {
       name: 'queueForm',
       form: {
-        title: 'Review queue',
+        title: 'ShadowMod review queue',
         description: `${pending.length} post${pending.length === 1 ? '' : 's'} waiting for review. Select one to go to the post, then use "Record review" from the mod menu.`,
         fields: [
           {
@@ -196,6 +196,7 @@ menu.post('/stats', async (c) => {
     return c.json<UiResponse>({ showToast: 'Could not identify user.' });
   }
 
+  const isRev = await isReviewer(username);
   const raw = await getStats(userId);
   const total = Number.parseInt(raw['total'] ?? '0', 10);
   const correct = Number.parseInt(raw['correct'] ?? '0', 10);
@@ -203,7 +204,9 @@ menu.post('/stats', async (c) => {
 
   if (total === 0) {
     return c.json<UiResponse>({
-      showToast: 'No completed observations yet. Use "Record observation" on a post to start.',
+      showToast: isRev
+        ? `No completed reviews yet for u/${username}. Record your reviews on posts to start.`
+        : `No completed observations yet for u/${username}. Use "Record observation" on a post to start.`,
     });
   }
 
@@ -213,12 +216,16 @@ menu.post('/stats', async (c) => {
     showForm: {
       name: 'statsForm',
       form: {
-        title: `ShadowMod: u/${username}`,
-        description: 'Your observation accuracy across all completed reviews.',
+        title: isRev
+          ? `ShadowMod (Reviewer): u/${username}`
+          : `ShadowMod (Observer): u/${username}`,
+        description: isRev
+          ? 'Agreement rate of trainees/observers with your decisions.'
+          : 'Your observation accuracy across all completed reviews.',
         fields: [
           {
             name: 'total',
-            label: 'Total completed',
+            label: isRev ? 'Total reviews compared' : 'Total completed',
             type: 'string',
             defaultValue: String(total),
             disabled: true,
@@ -226,7 +233,7 @@ menu.post('/stats', async (c) => {
           },
           {
             name: 'correct',
-            label: 'Matched reviewer',
+            label: isRev ? 'Trainees agreed' : 'Matched reviewer',
             type: 'string',
             defaultValue: String(correct),
             disabled: true,
@@ -234,7 +241,7 @@ menu.post('/stats', async (c) => {
           },
           {
             name: 'wrong',
-            label: 'Diverged',
+            label: isRev ? 'Trainees diverged' : 'Diverged',
             type: 'string',
             defaultValue: String(wrong),
             disabled: true,
@@ -242,41 +249,14 @@ menu.post('/stats', async (c) => {
           },
           {
             name: 'accuracy',
-            label: 'Accuracy',
+            label: isRev ? 'Trainee agreement rate' : 'Accuracy',
             type: 'string',
             defaultValue: accuracy,
             disabled: true,
             required: false,
           },
         ],
-        acceptLabel: 'Done',
-        cancelLabel: 'Close',
-      },
-    },
-  });
-});
-
-menu.post('/settings', async (c) => {
-  const config = await getConfig();
-  const savedList = config.reviewers.length > 0 ? config.reviewers.join(', ') : '(none)';
-
-  return c.json<UiResponse>({
-    showForm: {
-      name: 'settingsForm',
-      form: {
-        title: 'ShadowMod settings',
-        description: `Comma-separated list of Reddit usernames who act as Reviewers for this subreddit.\n\nCurrently saved: ${savedList}`,
-        fields: [
-          {
-            name: 'reviewers',
-            label: 'Reviewer usernames',
-            type: 'string',
-            placeholder: 'e.g. username1, username2',
-            defaultValue: config.reviewers.join(', '),
-            required: false,
-          },
-        ],
-        acceptLabel: 'Save',
+        acceptLabel: 'Close',
       },
     },
   });

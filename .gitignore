@@ -6,3 +6,5 @@ coverage/
 *.local
 CLAUDE.md
 .agents/
+.claude/
+

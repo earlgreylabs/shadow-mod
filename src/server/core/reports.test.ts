@@ -56,6 +56,10 @@ const mocks = vi.hoisted(() => {
       sendPrivateMessage: vi.fn(),
       sendPrivateMessageAsSubreddit: vi.fn(),
       addModNote: vi.fn(),
+      getSubredditInfoByName: vi.fn(async (name: string) => ({ id: `t5_${name}`, name })),
+      modMail: {
+        createModInboxConversation: vi.fn(async () => 'conv_123'),
+      },
     },
     schedulerMock: { runJob: vi.fn() },
   };
@@ -129,6 +133,8 @@ describe('generateReport', () => {
     redditMock.sendPrivateMessage.mockReset();
     redditMock.sendPrivateMessageAsSubreddit.mockReset();
     redditMock.addModNote.mockReset();
+    redditMock.getSubredditInfoByName.mockClear();
+    redditMock.modMail.createModInboxConversation.mockClear();
   });
 
   const jobData: ReportJobData = {
@@ -152,29 +158,33 @@ describe('generateReport', () => {
     expect(redditMock.addModNote).not.toHaveBeenCalled();
   });
 
-  it('delivers observer PM and reviewer subreddit PM on success', async () => {
+  it('delivers observer PM and reviewer PM on success', async () => {
     await saveObserverDecision(observer);
     await saveReviewerDecision(reviewer);
     redditMock.sendPrivateMessage.mockResolvedValue(undefined);
-    redditMock.sendPrivateMessageAsSubreddit.mockResolvedValue(undefined);
 
     await generateReport(jobData, 'shadow_mod_dev');
 
-    // Observer gets a personal DM
-    expect(redditMock.sendPrivateMessage).toHaveBeenCalledOnce();
-    expect(redditMock.sendPrivateMessage).toHaveBeenCalledWith(
+    // Observer gets a personal DM, Reviewer gets a personal DM
+    expect(redditMock.sendPrivateMessage).toHaveBeenCalledTimes(2);
+    expect(redditMock.sendPrivateMessage).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({ to: 'observer_user' }),
     );
-    // Reviewer gets a subreddit PM (private, not shared mod inbox)
-    expect(redditMock.sendPrivateMessageAsSubreddit).toHaveBeenCalledOnce();
-    expect(redditMock.sendPrivateMessageAsSubreddit).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'reviewer_user', fromSubredditName: 'shadow_mod_dev' }),
+    expect(redditMock.sendPrivateMessage).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ to: 'reviewer_user' }),
     );
+    expect(redditMock.sendPrivateMessageAsSubreddit).not.toHaveBeenCalled();
     expect(redditMock.addModNote).not.toHaveBeenCalled();
 
     const stats = await getStats('t2_obs');
     expect(stats['total']).toBe('1');
     expect(stats['correct']).toBe('1');
+
+    const revStats = await getStats('t2_rev');
+    expect(revStats['total']).toBe('1');
+    expect(revStats['correct']).toBe('1');
 
     const after = await getObserverDecision('t3_abc', 't2_obs');
     expect(after?.status).toBe('complete');
@@ -192,6 +202,10 @@ describe('generateReport', () => {
     const stats = await getStats('t2_obs');
     expect(stats['total']).toBe('1');
     expect(stats['wrong']).toBe('1');
+
+    const revStats = await getStats('t2_rev');
+    expect(revStats['total']).toBe('1');
+    expect(revStats['wrong']).toBe('1');
   });
 
   it('uses the most recent reviewer when multiple exist', async () => {
@@ -204,13 +218,44 @@ describe('generateReport', () => {
       action: 'approve',
     });
     redditMock.sendPrivateMessage.mockResolvedValue(undefined);
-    redditMock.sendPrivateMessageAsSubreddit.mockResolvedValue(undefined);
 
     await updateObserverStatus('t3_abc', 't2_obs', 'pending_report');
     await generateReport(jobData, 'shadow_mod_dev');
 
-    // One personal PM (Observer) + one subreddit PM (Reviewer)
-    expect(redditMock.sendPrivateMessage).toHaveBeenCalledOnce();
-    expect(redditMock.sendPrivateMessageAsSubreddit).toHaveBeenCalledOnce();
+    // One personal PM (Observer) + one personal PM (Reviewer)
+    expect(redditMock.sendPrivateMessage).toHaveBeenCalledTimes(2);
+    expect(redditMock.sendPrivateMessageAsSubreddit).not.toHaveBeenCalled();
+
+    const obsStats = await getStats('t2_obs');
+    expect(obsStats['total']).toBe('1');
+    expect(obsStats['wrong']).toBe('1');
+
+    const rev2Stats = await getStats('t2_rev2');
+    expect(rev2Stats['total']).toBe('1');
+    expect(rev2Stats['wrong']).toBe('1');
+
+    const rev1Stats = await getStats('t2_rev');
+    expect(rev1Stats['total']).toBeUndefined();
+  });
+
+  it('falls back to modmail when reviewer PM fails', async () => {
+    await saveObserverDecision(observer);
+    await saveReviewerDecision(reviewer);
+    // First PM call (observer) succeeds, second (reviewer) fails
+    redditMock.sendPrivateMessage
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('NOT_WHITELISTED_BY_USER_MESSAGE'));
+
+    await generateReport(jobData, 'shadow_mod_dev');
+
+    // Verify modmail fallback was executed
+    expect(redditMock.getSubredditInfoByName).toHaveBeenCalledWith('shadow_mod_dev');
+    expect(redditMock.modMail.createModInboxConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subredditId: 't5_shadow_mod_dev',
+        subject: expect.stringContaining('ShadowMod'),
+      }),
+    );
+    expect(redditMock.addModNote).not.toHaveBeenCalled();
   });
 });

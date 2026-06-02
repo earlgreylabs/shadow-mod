@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const strings = new Map<string, string>();
   const hashes = new Map<string, Map<string, string>>();
   const zsets = new Map<string, ZMember[]>();
+  const settingsValues = new Map<string, any>();
   const globToRegex = (glob: string): RegExp =>
     new RegExp(`^${glob.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
 
@@ -51,9 +52,33 @@ const mocks = vi.hoisted(() => {
       zsets.clear();
     },
   };
+
+  const settingsMock = {
+    get: vi.fn(async (key: string) => settingsValues.get(key)),
+    getAll: vi.fn(async () => Object.fromEntries(settingsValues.entries())),
+    set: vi.fn(async (key: string, value: any) => {
+      settingsValues.set(key, value);
+    }),
+    _reset() {
+      settingsValues.clear();
+    },
+  };
+
   return {
     redisMock,
-    redditMock: { sendPrivateMessage: vi.fn(), addModNote: vi.fn() },
+    settingsMock,
+    redditMock: {
+      sendPrivateMessage: vi.fn(),
+      addModNote: vi.fn(),
+      getPostById: vi.fn(async (id: string) => ({
+        id,
+        title: `Title for ${id}`,
+        permalink: `/comments/${id}`,
+        approved: false,
+        removed: false,
+        spam: false,
+      })),
+    },
     schedulerMock: { runJob: vi.fn() },
     ctx: {} as {
       postId?: string;
@@ -70,6 +95,7 @@ vi.mock('@devvit/web/server', () => ({
   redis: mocks.redisMock,
   reddit: mocks.redditMock,
   scheduler: mocks.schedulerMock,
+  settings: mocks.settingsMock,
   get context() {
     return mocks.ctx;
   },
@@ -81,7 +107,6 @@ import {
   getReviewerDecision,
   saveObserverDecision,
 } from '../core/decisions.js';
-import { getConfig } from '../core/config.js';
 
 function mountForms() {
   const app = new Hono();
@@ -99,6 +124,8 @@ async function submit(app: Hono, path: string, body: unknown) {
 
 beforeEach(() => {
   redisMock._reset();
+  mocks.settingsMock._reset();
+  mocks.schedulerMock.runJob.mockReset();
   mocks.ctx.postId = 't3_abc';
   mocks.ctx.userId = 't2_obs';
   mocks.ctx.username = 'observer_user';
@@ -129,17 +156,19 @@ describe('POST /form/observation-submit', () => {
 });
 
 describe('POST /form/review-submit', () => {
+  const observer = {
+    id: 't3_abc:t2_obs',
+    postId: 't3_abc',
+    observerId: 't2_obs',
+    observerName: 'observer_user',
+    action: 'remove' as const,
+    reason: 'spam',
+    timestamp: '2026-05-16T00:00:00.000Z',
+    status: 'pending_review' as const,
+  };
+
   it('persists a reviewer decision and transitions observer status', async () => {
-    await saveObserverDecision({
-      id: 't3_abc:t2_obs',
-      postId: 't3_abc',
-      observerId: 't2_obs',
-      observerName: 'observer_user',
-      action: 'remove',
-      reason: 'spam',
-      timestamp: '2026-05-16T00:00:00.000Z',
-      status: 'pending_review',
-    });
+    await saveObserverDecision(observer);
 
     mocks.ctx.userId = 't2_rev';
     mocks.ctx.username = 'reviewer_user';
@@ -153,18 +182,46 @@ describe('POST /form/review-submit', () => {
     const reviewer = await getReviewerDecision('t3_abc', 't2_rev');
     expect(reviewer?.action).toBe('approve');
 
-    const observer = await getObserverDecision('t3_abc', 't2_obs');
-    expect(observer?.status).toBe('pending_report');
+    const observerObj = await getObserverDecision('t3_abc', 't2_obs');
+    expect(observerObj?.status).toBe('pending_report');
   });
-});
 
-describe('POST /form/settings-submit', () => {
-  it('parses comma-separated reviewer usernames into config', async () => {
-    const res = await submit(mountForms(), '/form/settings-submit', {
-      reviewers: 'alice, bob, ,carol',
+  it('triggers the report immediately if the post is already approved on Reddit', async () => {
+    await saveObserverDecision(observer);
+
+    mocks.ctx.userId = 't2_rev';
+    mocks.ctx.username = 'reviewer_user';
+
+    // Mock the post to be already approved
+    mocks.redditMock.getPostById.mockResolvedValueOnce({
+      id: 't3_abc',
+      title: 'Title for t3_abc',
+      permalink: '/comments/abc',
+      approved: true,
+      removed: false,
+      spam: false,
+    });
+
+    const res = await submit(mountForms(), '/form/review-submit', {
+      action: ['approve'],
+      reason: 'fine',
     });
     expect(res.status).toBe(200);
-    const config = await getConfig();
-    expect(config.reviewers).toEqual(['alice', 'bob', 'carol']);
+
+    // Observer status should be updated to complete
+    const observerObj = await getObserverDecision('t3_abc', 't2_obs');
+    expect(observerObj?.status).toBe('complete');
+
+    // It should have scheduled a report job
+    expect(mocks.schedulerMock.runJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'generate-report',
+        data: expect.objectContaining({
+          postId: 't3_abc',
+          observerId: 't2_obs',
+          finalAction: 'approve',
+        }),
+      }),
+    );
   });
 });

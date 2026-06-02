@@ -17,16 +17,17 @@
     "test:coverage": "vitest run --coverage",
     "check": "pnpm type-check && pnpm lint && pnpm format:check && pnpm test",
     "upload": "pnpm check && devvit upload",
-    "publish": "pnpm upload && devvit publish"
+    "publish": "pnpm upload && devvit publish",
+    "release": "node scripts/release.js"
   },
   "engines": {
     "node": ">=22.2.0"
   },
   "dependencies": {
-    "@devvit/start": "0.12.24",
-    "@devvit/web": "0.12.24",
+    "@devvit/start": "0.13.0",
+    "@devvit/web": "0.13.0",
     "@hono/node-server": "2.0.2",
-    "devvit": "0.12.24",
+    "devvit": "0.13.0",
     "hono": "4.12.18",
     "zod": "^4.4.3"
   },

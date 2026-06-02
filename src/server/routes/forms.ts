@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { context } from '@devvit/web/server';
+import { context, reddit } from '@devvit/web/server';
 import type { UiResponse } from '@devvit/web/shared';
-import type { ModActionType } from '@/shared/types.js';
+import type { ModActionType, ReportJobData } from '@/shared/types.js';
 import {
   saveObserverDecision,
   saveReviewerDecision,
@@ -9,8 +9,9 @@ import {
   updateObserverStatus,
   getFormSession,
   hasObserverDecision,
+  removePending,
 } from '../core/decisions.js';
-import { setConfig } from '../core/config.js';
+import { scheduleReport } from '../core/reports.js';
 
 /** Hono sub-app handling all form submission endpoints. */
 export const forms = new Hono();
@@ -101,18 +102,67 @@ forms.post('/review-submit', async (c) => {
     timestamp: new Date().toISOString(),
   });
 
-  // Move all pending observer decisions for this post to pending_report
-  const pending = await getPendingForPost(postId);
-  for (const d of pending) {
-    await updateObserverStatus(postId, d.observerId, 'pending_report');
+  // Check if the post is already moderated on Reddit to allow flexible out-of-order review.
+  let isAlreadyModerated = false;
+  let finalAction = 'unknown';
+  let postTitle = `Post ${postId}`;
+  let postPermalink = `https://reddit.com/comments/${postId}`;
+
+  try {
+    const normalizedPostId = postId.startsWith('t3_') ? postId : `t3_${postId}`;
+    const post = await reddit.getPostById(normalizedPostId as `t3_${string}`);
+    postTitle = post.title;
+    postPermalink = post.permalink;
+
+    if (post.approved) {
+      isAlreadyModerated = true;
+      finalAction = 'approve';
+    } else if (post.removed || post.spam) {
+      isAlreadyModerated = true;
+      finalAction = 'remove';
+    }
+  } catch (err) {
+    console.warn(`[shadow-mod] failed to check post status for ${postId}`, err);
   }
 
-  return c.json<UiResponse>({
-    showToast: {
-      text: 'Your review is recorded. Reports will be sent when the real action is taken.',
-      appearance: 'success',
-    },
-  });
+  // Process all pending observer decisions for this post.
+  const pending = await getPendingForPost(postId);
+
+  if (isAlreadyModerated) {
+    // If the post has already been acted upon, trigger the report immediately.
+    for (const d of pending) {
+      await updateObserverStatus(postId, d.observerId, 'complete');
+      await removePending(postId, d.observerId);
+
+      const jobData: ReportJobData = {
+        postId,
+        observerId: d.observerId,
+        finalAction,
+        postTitle,
+        postPermalink,
+      };
+      await scheduleReport(jobData);
+    }
+
+    return c.json<UiResponse>({
+      showToast: {
+        text: `Your review is recorded. Post is already moderated (${finalAction}), report sent immediately.`,
+        appearance: 'success',
+      },
+    });
+  } else {
+    // Standard flow: transition status to pending_report and wait for trigger.
+    for (const d of pending) {
+      await updateObserverStatus(postId, d.observerId, 'pending_report');
+    }
+
+    return c.json<UiResponse>({
+      showToast: {
+        text: 'Your review is recorded. Reports will be sent when the real action is taken.',
+        appearance: 'success',
+      },
+    });
+  }
 });
 
 forms.post('/queue-submit', async (c) => {
@@ -139,23 +189,4 @@ forms.post('/queue-submit', async (c) => {
 forms.post('/stats-submit', async (c) => {
   // Read-only form — no action on submit
   return c.json<UiResponse>({});
-});
-
-forms.post('/settings-submit', async (c) => {
-  const body = await c.req.json<{ reviewers?: string }>();
-  const raw = body?.reviewers ?? '';
-
-  const reviewers = raw
-    .split(',')
-    .map((s) => s.trim().replace(/^u\//i, ''))
-    .filter(Boolean);
-
-  await setConfig({ reviewers });
-
-  return c.json<UiResponse>({
-    showToast: {
-      text: `Saved. Reviewers: ${reviewers.length > 0 ? reviewers.join(', ') : 'none set'}`,
-      appearance: 'success',
-    },
-  });
 });

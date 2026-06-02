@@ -241,6 +241,106 @@
     footer a { color: var(--blue); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
+    /* ── Lifecycle Panel ───────────────────────────── */
+    .lifecycle-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin-bottom: 56px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lifecycle-panel::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #ff4500, #58a6ff);
+    }
+
+    .lifecycle-header {
+      margin-bottom: 28px;
+    }
+
+    .lifecycle-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .lifecycle-subtitle {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .lifecycle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .lifecycle-card {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .lifecycle-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--muted);
+    }
+
+    .card-step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-step-num {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ff7a45;
+    }
+
+    .card-icon {
+      font-size: 16px;
+      opacity: 0.7;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      .lifecycle-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
     @media (max-width: 600px) {
       .step { grid-template-columns: 36px 1fr; gap: 0 12px; }
       .step-num { width: 28px; height: 28px; font-size: 11px; }
@@ -264,6 +364,46 @@
 
 <main>
 
+  <!-- ── Moderation Lifecycle ──────────────────────── -->
+  <div class="lifecycle-panel">
+    <div class="lifecycle-header">
+      <div class="lifecycle-title">Moderation Lifecycle</div>
+      <div class="lifecycle-subtitle">Understanding the chronological flow of shadow practice.</div>
+    </div>
+    <div class="lifecycle-grid">
+      <div class="lifecycle-card">
+        <div class="card-step-header">
+          <span class="card-step-num">Step 01</span>
+          <span class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff7a45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </span>
+        </div>
+        <div class="card-title">Post Submitted</div>
+        <div class="card-desc">User submits a new post to the subreddit.</div>
+      </div>
+      <div class="lifecycle-card">
+        <div class="card-step-header">
+          <span class="card-step-num">Step 02</span>
+          <span class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff7a45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </span>
+        </div>
+        <div class="card-title">Independent Review</div>
+        <div class="card-desc">Observers and Reviewers make blind calls.</div>
+      </div>
+      <div class="lifecycle-card">
+        <div class="card-step-header">
+          <span class="card-step-num">Step 03</span>
+          <span class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff7a45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </span>
+        </div>
+        <div class="card-title">Automatic Report</div>
+        <div class="card-desc">Comparison generated upon real mod action.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Phase 0: Setup ─────────────────────────── -->
   <section class="phase">
     <div class="phase-header">
@@ -277,13 +417,12 @@
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-body">
-        <div class="step-title">Configure Reviewers in ShadowMod settings</div>
+        <div class="step-title">Configure Reviewers in App Settings</div>
         <div class="step-desc">
-          From the subreddit feed, open <strong>Mod Tools</strong> and choose <strong>ShadowMod settings</strong>.
-          Enter the Reddit usernames of mods who will act as Reviewers. Everyone else defaults to the Observer role.
+          Go to your subreddit's <strong>Mod Tools</strong>, select <strong>Apps</strong>, find <strong>ShadowMod</strong>, and open its settings. Under the <strong>Installation Settings</strong> section, enter a comma-separated list of Reddit usernames who will act as Reviewers. Everyone else defaults to the Observer role.
         </div>
         <div class="step-screenshot">
-          <img src="screenshots/13-settings-configure-reviewers.png" alt="ShadowMod settings modal showing Reviewer configuration" loading="lazy" />
+          <img src="screenshots/13-settings-configure-reviewers.png" alt="Reddit App Installation Settings showing Reviewer configuration" loading="lazy" />
         </div>
       </div>
     </div>

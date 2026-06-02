@@ -9,25 +9,19 @@
     "items": [
       {
         "label": "Record observation",
-        "description": "Log your moderation call without executing it",
+        "description": "(trainee) Log your moderation call without executing it",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/observation"
       },
       {
         "label": "Record review",
-        "description": "Record your independent review of a pending observation",
+        "description": "(senior) Record your independent review of a pending observation",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/review"
       },
-      {
-        "label": "ShadowMod settings",
-        "description": "Configure who acts as a Reviewer in this subreddit",
-        "location": "subreddit",
-        "forUserType": "moderator",
-        "endpoint": "/internal/menu/settings"
-      },
+
       {
         "label": "My ShadowMod stats",
         "description": "View your observation accuracy over time",
@@ -36,7 +30,7 @@
         "endpoint": "/internal/menu/stats"
       },
       {
-        "label": "Review queue",
+        "label": "ShadowMod review queue",
         "description": "See posts with pending observations and navigate to them",
         "location": "subreddit",
         "forUserType": "moderator",
@@ -48,7 +42,6 @@
     "observationForm": "/internal/form/observation-submit",
     "reviewForm": "/internal/form/review-submit",
     "queueForm": "/internal/form/queue-submit",
-    "settingsForm": "/internal/form/settings-submit",
     "statsForm": "/internal/form/stats-submit"
   },
   "scheduler": {
@@ -68,6 +61,16 @@
   },
   "marketingAssets": {
     "icon": "assets/icon.png"
+  },
+  "settings": {
+    "subreddit": {
+      "reviewers": {
+        "type": "string",
+        "label": "Reviewer usernames",
+        "helpText": "Comma-separated list of Reddit usernames who act as Reviewers for this subreddit (e.g. username1, username2).",
+        "defaultValue": ""
+      }
+    }
   },
   "dev": {
     "subreddit": "shadow_mod_dev"
