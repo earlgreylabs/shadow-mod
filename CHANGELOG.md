@@ -9,6 +9,10 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] — 2026-06-02
+
 ### Added
 
 - **Reviewer Stats tracking**: Reviewers now have their own stats recorded when reports are compiled. Checking stats as a Reviewer displays their total reviews compared, trainees agreed, trainees diverged, and the trainee agreement rate.
